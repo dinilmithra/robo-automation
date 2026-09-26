@@ -1,0 +1,29 @@
+[project]
+name = "robo-automation"
+version = "0.1.1"
+description = "Reusable Playwright and pytest automation framework utilities"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "playwright==1.63.0",
+    "pytest==9.1.1",
+    "psutil==7.2.2",
+]
+
+[project.entry-points.pytest11]
+robo_automation = "robo_automation.pytest_plugin"
+
+[tool.poetry]
+packages = [{ include = "robo_automation" }]
+exclude = ["tools/**"]
+
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "7.1.0"
+black = "26.5.1"
+
+[build-system]
+requires = ["poetry-core==2.5.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
