@@ -7,8 +7,26 @@ Generic browser automation infrastructure shared by application test projects.
 - testcase/process/attempt correlation IDs
 - logging context and per-test logs
 - pytest-friendly performance monitoring
-- generic Playwright/pytest automation utilities
-- generic pytest session fixtures: `performance_monitor`, `playwright`, and `browser`
+- generic Playwright/browser lifecycle
+- `RoboBrowserContext`, `RoboPage`, `RoboLocator`, and `Scope`
+- pytest fixtures for `performance_monitor`, the Playwright runtime, `browser`, `storage_state`, `context_options`, `wait_time`, `context_page_handler`, `context`, `robo_page`, and `page`
+- the installed `pytest11` plugin entry point (`robo_automation = "robo_automation.pytest_plugin"`)
+
+The public resource chain is:
+
+```text
+Playwright Browser
+    ↓
+RoboBrowserContext
+    ↓
+RoboPage
+    ↓
+RoboLocator
+```
+
+`wait_time` is expressed in **seconds**. `robo-automation` converts it to milliseconds only when calling Playwright timeout APIs.
+
+`robo_page` owns the generic page lifecycle. Higher-level libraries can specialize that page without recreating its Playwright lifecycle. For standalone `robo-automation` use, a conditional plugin alias exposes `page -> robo_page`; when the `robo-appian` plugin is loaded, that generic alias is not registered so `robo-appian` can expose the Appian-specialized public `page` deterministically.
 
 ## Does not own
 
@@ -20,8 +38,7 @@ Python imports use `robo_automation`; the distribution/library name is `robo-aut
 
 ## Publishing
 
-`robo-automation` is a standalone distribution, matching the deployment model used
-by `robo-appian`. CORE currently depends on version `0.1.1`; publish newer releases before CORE/Jenkins consumes them.
+`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.3`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
 
 From the parent workspace, with a Python 3.12 environment that contains Poetry:
 
@@ -42,3 +59,14 @@ Create a dedicated Python 3.12 environment for this library:
 py -3.12 .\robo-automation\tools\setup_venv.py
 .\robo-automation\.venv\Scripts\Activate.ps1
 ```
+
+Run commands through Poetry when the environment is not activated:
+
+```powershell
+poetry run pytest
+poetry run black .
+```
+
+## Relationship to robo-appian
+
+`robo-appian` depends on these generic abstractions and contains Appian-specific components and interaction helpers. `robo-automation` must not import `robo-appian` or CORE application code.

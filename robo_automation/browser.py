@@ -8,10 +8,10 @@ import threading
 import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Playwright, sync_playwright
+from playwright.sync_api import Browser, Playwright, sync_playwright
 
 from .config import AutomationConfig
 from .performance import PytestPerformanceMonitor
@@ -148,31 +148,3 @@ def browser_lifecycle(
     finally:
         with _measure(performance_monitor, "browser_close"):
             close_resource(browser, "browser")
-
-
-def context_lifecycle(
-    browser: Browser,
-    storage_state: Optional[Dict[str, Any]],
-    performance_monitor: Optional[PytestPerformanceMonitor],
-    *,
-    on_page: Optional[Callable[[Any], None]] = None,
-) -> Iterator[BrowserContext]:
-    """Create and close a browser context, optionally using authenticated state."""
-    headless = AutomationConfig.get_env_bool("HEAD_LESS", True)
-    options: Dict[str, Any] = {"ignore_https_errors": True}
-    if storage_state:
-        options["storage_state"] = storage_state
-    if not headless:
-        options["no_viewport"] = True
-    with _measure(performance_monitor, "browser_context_create"):
-        context = browser.new_context(**options)
-        timeout_ms = AutomationConfig.get_env_int("WAIT_TIME", 180) * 1000
-        context.set_default_timeout(timeout_ms)
-        context.set_default_navigation_timeout(timeout_ms)
-        if on_page is not None:
-            context.on("page", on_page)
-    try:
-        yield context
-    finally:
-        with _measure(performance_monitor, "browser_context_close"):
-            close_resource(context, "browser context")

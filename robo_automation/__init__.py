@@ -10,10 +10,15 @@ from .correlation import (
 )
 from .logging import LogManager
 from .performance import PytestPerformanceMonitor
+from .framework import RoboBrowserContext, RoboPage, RoboLocator, Scope
 
 __all__ = [
     "LogManager",
     "PytestPerformanceMonitor",
+    "RoboBrowserContext",
+    "RoboPage",
+    "RoboLocator",
+    "Scope",
     "bind_test_context",
     "build_attempt_id",
     "build_process_id",
