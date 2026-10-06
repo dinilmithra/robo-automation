@@ -38,7 +38,7 @@ Python imports use `robo_automation`; the distribution/library name is `robo-aut
 
 ## Publishing
 
-`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.3`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
+`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.4`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
 
 From the parent workspace, with a Python 3.12 environment that contains Poetry:
 
