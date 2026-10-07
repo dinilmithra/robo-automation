@@ -68,6 +68,10 @@ def main() -> int:
 
     env = os.environ.copy()
     env["POETRY_VIRTUALENVS_CREATE"] = "false"
+
+    # Keep poetry.lock synchronized with pyproject.toml before installation.
+    # This makes the bootstrap script resilient to dependency/version updates.
+    _run([str(python), "-m", "poetry", "lock"], env=env)
     _run([str(python), "-m", "poetry", "install"], env=env)
     _run([str(python), "-m", "poetry", "--version"])
 

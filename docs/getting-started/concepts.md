@@ -2,7 +2,7 @@
 
 ## Generic ownership
 
-`RoboBrowserContext`, `RoboPage`, `RoboLocator`, and `Scope` are generic wrappers owned by `robo-automation`. Application-specific libraries should derive or specialize them without introducing an upward dependency from `robo-automation`.
+`BrowserSession`, `RoboBrowserContext`, `RoboPage`, `RoboLocator`, and `Scope` are generic automation contracts/wrappers owned by `robo-automation`. Application-specific libraries should derive or specialize them without introducing an upward dependency from `robo-automation`.
 
 ## Timeout contract
 

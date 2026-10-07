@@ -236,6 +236,10 @@ class RoboLocator:
         """Uncheck the wrapped checkbox element."""
         self._locator.uncheck(**kwargs)
 
+    def exists(self) -> bool:
+        """Return whether the wrapped locator currently matches any element."""
+        return self._locator.count() > 0
+
     def is_visible(self, **kwargs: Any) -> bool:
         """Return whether the wrapped element is visible."""
         return self._locator.is_visible(**kwargs)

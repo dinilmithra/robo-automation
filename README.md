@@ -38,7 +38,7 @@ Python imports use `robo_automation`; the distribution/library name is `robo-aut
 
 ## Publishing
 
-`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.4`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
+`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.5`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
 
 From the parent workspace, with a Python 3.12 environment that contains Poetry:
 
@@ -59,6 +59,8 @@ Create a dedicated Python 3.12 environment for this library:
 py -3.12 .\robo-automation\tools\setup_venv.py
 .\robo-automation\.venv\Scripts\Activate.ps1
 ```
+
+The setup script installs Poetry into the library `.venv`, runs `poetry lock` to refresh an out-of-date lock file, and then runs `poetry install`. You do not need to regenerate `poetry.lock` manually after changing `pyproject.toml` before running the bootstrap.
 
 Run commands through Poetry when the environment is not activated:
 

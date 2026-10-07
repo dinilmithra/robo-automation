@@ -65,3 +65,15 @@ def test_specialize_preserves_underlying_page() -> None:
     assert isinstance(specialized, SpecializedPage)
     assert specialized.same_page(robo_page)
     assert specialized.specialize(SpecializedPage) is specialized
+
+
+def test_robo_locator_exists_uses_match_count() -> None:
+    page = _mock_page()
+    robo_page = RoboPage.get(page)
+    result = robo_page.get_by_id("un")
+    result.locator.count.return_value = 1
+
+    assert result.exists() is True
+
+    result.locator.count.return_value = 0
+    assert result.exists() is False

@@ -71,7 +71,7 @@ def _launch_browser_in_slot(
     *,
     headless: bool,
 ) -> Browser:
-    timeout_ms = AutomationConfig.get_env_int("WAIT_TIME", 180) * 1000
+    timeout_ms = AutomationConfig.get_env_int("WAIT_TIME", 90) * 1000
 
     def launch() -> Browser:
         logger.info("Launching browser for %s.", worker_id)
@@ -91,7 +91,7 @@ def _launch_browser_in_slot(
     cache_path.mkdir(parents=True, exist_ok=True)
     state_path = cache_path / "browser-launch.timestamp"
     lock_path = cache_path / "browser-launch.lock"
-    lock_timeout = max(AutomationConfig.get_env_int("WAIT_TIME", 180), 60)
+    lock_timeout = max(AutomationConfig.get_env_int("WAIT_TIME", 90), 60)
     started = time.monotonic()
     while True:
         try:
@@ -148,3 +148,30 @@ def browser_lifecycle(
     finally:
         with _measure(performance_monitor, "browser_close"):
             close_resource(browser, "browser")
+
+
+def create_browser_context(
+    browser: Any,
+    *,
+    context_options: Optional[dict[str, Any]] = None,
+    wait_time_seconds: Optional[int] = None,
+):
+    """Create and configure a generic wrapped browser context."""
+    from .framework import RoboBrowserContext
+
+    context = RoboBrowserContext.get(browser.new_context(**(context_options or {})))
+    if wait_time_seconds is not None:
+        timeout_ms = wait_time_seconds * 1000
+        context.set_default_timeout(timeout_ms)
+        context.set_default_navigation_timeout(timeout_ms)
+    return context
+
+
+def create_browser_page(context: Any, page_type: Any = None):
+    """Create a page from a wrapped context and optionally specialize it."""
+    from .framework import RoboPage
+
+    page = context.new_page()
+    if page_type is None or page_type is RoboPage:
+        return page
+    return page.specialize(page_type)

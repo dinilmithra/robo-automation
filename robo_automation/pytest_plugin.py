@@ -56,7 +56,7 @@ def pytest_configure(config: pytest.Config) -> None:
     LogManager.apply_log_cli_format_from_env(config)
     LogManager.apply_log_cli_date_format_from_env(config)
     expect.set_options(
-        timeout=AutomationConfig.get_env_int("WAIT_TIME", 180) * 1000
+        timeout=AutomationConfig.get_env_int("WAIT_TIME", 90) * 1000
     )
     if not bool(getattr(config.option, "collectonly", False)):
         LogManager.configure_worker_log_path(config, logger)
@@ -100,7 +100,7 @@ def browser(
     )
 
 
-DEFAULT_WAIT_TIME = 180
+DEFAULT_WAIT_TIME = 90
 
 
 def _measure_framework(

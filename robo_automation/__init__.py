@@ -10,11 +10,12 @@ from .correlation import (
 )
 from .logging import LogManager
 from .performance import PytestPerformanceMonitor
-from .framework import RoboBrowserContext, RoboPage, RoboLocator, Scope
+from .framework import BrowserSession, RoboBrowserContext, RoboPage, RoboLocator, Scope
 
 __all__ = [
     "LogManager",
     "PytestPerformanceMonitor",
+    "BrowserSession",
     "RoboBrowserContext",
     "RoboPage",
     "RoboLocator",
