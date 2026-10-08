@@ -2,8 +2,15 @@ site_name: robo-automation
 site_description: Generic Playwright and pytest automation framework utilities
 copyright: Copyright &copy; 2026 Dinil Mithra
 
+extra:
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
+
 theme:
   name: material
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -19,6 +26,7 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.tracking
     - navigation.indexes
     - toc.follow
     - content.code.copy
@@ -44,6 +52,7 @@ plugins:
             filters: ["!^_"]
 
 markdown_extensions:
+  - md_in_html
   - admonition
   - attr_list
   - pymdownx.details
@@ -78,3 +87,5 @@ nav:
       - Configuration: api/config.md
       - Logging: api/logging.md
       - Errors: api/errors.md
+
+  - robo-appian API Reference: https://dinilmithra.github.io/robo-appian/api/
