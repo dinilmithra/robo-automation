@@ -16,7 +16,7 @@ import pytest
 from playwright.sync_api import Locator, Page
 
 from .correlation import current_correlation
-from .config import AutomationConfig
+from .config import ArtifactPaths, PerformanceConfig, RuntimeConfig
 
 logger = logging.getLogger(__name__)
 
@@ -61,39 +61,39 @@ class PytestPerformanceMonitor:
         "wait_for",
     )
 
-    def __init__(self, config: pytest.Config) -> None:
-        """Initialize worker-specific outputs, thresholds, and monitor state."""
+    def __init__(
+        self,
+        config: pytest.Config,
+        performance_config: Optional[PerformanceConfig] = None,
+        artifact_paths: Optional[ArtifactPaths] = None,
+    ) -> None:
+        """Initialize worker-specific outputs, thresholds, and monitor state.
+
+        ``performance_config`` and ``artifact_paths`` are normally supplied by
+        robo-automation fixtures. Optional fallbacks preserve the standalone
+        constructor for existing consumers.
+        """
+        if performance_config is None or artifact_paths is None:
+            runtime = RuntimeConfig.from_env()
+            performance_config = performance_config or runtime.performance
+            artifact_paths = artifact_paths or ArtifactPaths.from_config(
+                Path(config.rootpath), runtime.artifacts
+            )
+
         self.worker_id = str(
             getattr(config, "workerinput", {}).get("workerid", "master")
         )
-        configured_path = AutomationConfig.get_env_string(
-            "PERF_MONITOR_PATH", "artifacts/logs/performance"
-        )
-        path = Path(configured_path)
-        if not path.is_absolute():
-            path = Path(config.rootpath) / path
-
-        artifacts_root = AutomationConfig.get_env_string("ARTIFACTS_ROOT", "")
-        if artifacts_root:
-            root_path = Path(artifacts_root)
-            if not root_path.is_absolute():
-                root_path = Path(config.rootpath) / root_path
-            try:
-                path.relative_to(root_path)
-            except ValueError:
-                run_id = AutomationConfig.get_env_string(
-                    "PERF_MONITOR_RUN_ID", "run-unknown"
-                )
-                path /= run_id
+        path = artifact_paths.performance_logs
+        try:
+            path.relative_to(artifact_paths.root)
+        except ValueError:
+            path = path / performance_config.run_id
 
         path.mkdir(parents=True, exist_ok=True)
         self.output = path / f"{self.worker_id}.jsonl"
         self.summary_output = path / f"{self.worker_id}-summary.json"
         self.process = psutil.Process(os.getpid())
-        self.sample_interval = max(
-            0.1,
-            float(AutomationConfig.get_env_string("PERF_MONITOR_INTERVAL", "1.0")),
-        )
+        self.sample_interval = performance_config.sample_interval
         self.include_descendants = self.worker_id == "master"
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -102,43 +102,15 @@ class PytestPerformanceMonitor:
             daemon=True,
         )
         self.stream = self.output.open("a", encoding="utf-8")
-        self.flush_every = max(
-            1,
-            AutomationConfig.get_env_int("PERF_MONITOR_FLUSH_EVERY", 20),
-        )
+        self.flush_every = performance_config.flush_every
         self._pending_writes = 0
 
-        self.actions_enabled = AutomationConfig.get_env_bool(
-            "PERF_MONITOR_ACTIONS", True
-        )
-        self.framework_enabled = AutomationConfig.get_env_bool(
-            "PERF_MONITOR_FRAMEWORK", True
-        )
-        self.console_enabled = AutomationConfig.get_env_bool(
-            "PERF_MONITOR_CONSOLE", False
-        )
-        self.threshold_ms = max(
-            0.0,
-            float(
-                AutomationConfig.get_env_string(
-                    "PERF_MONITOR_THRESHOLD_MS",
-                    "500",
-                )
-            ),
-        )
-        self.slow_ms = max(
-            0.0,
-            float(
-                AutomationConfig.get_env_string(
-                    "PERF_MONITOR_SLOW_MS",
-                    "2000",
-                )
-            ),
-        )
-        self.summary_limit = max(
-            1,
-            AutomationConfig.get_env_int("PERF_MONITOR_SUMMARY_LIMIT", 50),
-        )
+        self.actions_enabled = performance_config.actions_enabled
+        self.framework_enabled = performance_config.framework_enabled
+        self.console_enabled = performance_config.console_enabled
+        self.threshold_ms = performance_config.threshold_ms
+        self.slow_ms = performance_config.slow_ms
+        self.summary_limit = performance_config.summary_limit
 
         self._original_methods: Dict[Tuple[type, str], Callable[..., Any]] = {}
 
@@ -538,6 +510,7 @@ class PytestPerformanceMonitor:
             "slow_count": self._slow_count,
             "threshold_ms": self.threshold_ms,
             "slow_threshold_ms": self.slow_ms,
+            "summary_limit": self.summary_limit,
             "by_operation": by_operation,
             "slowest_operations": slowest,
         }
@@ -550,7 +523,9 @@ class PytestPerformanceMonitor:
         temp_path.replace(self.summary_output)
 
     @staticmethod
-    def merge_worker_summaries(performance_path: Path) -> Optional[Path]:
+    def merge_worker_summaries(
+        performance_path: Path, summary_limit: int = 50
+    ) -> Optional[Path]:
         """Create one run-level summary from master/xdist worker summaries.
 
         Raw JSONL remains worker-specific for efficient append-only logging.
@@ -577,6 +552,7 @@ class PytestPerformanceMonitor:
         slow_threshold_ms = 0.0
         threshold_ms = 0.0
         workers: List[str] = []
+        resolved_summary_limit = resolved_summary_limit
 
         for summary_file in summary_files:
             try:
@@ -585,6 +561,9 @@ class PytestPerformanceMonitor:
                 continue
 
             workers.append(str(data.get("worker", summary_file.stem)))
+            resolved_summary_limit = max(
+                resolved_summary_limit, int(data.get("summary_limit", 0) or 0)
+            )
             timing_count += int(data.get("timing_count", 0) or 0)
             slow_count += int(data.get("slow_count", 0) or 0)
             threshold_ms = max(threshold_ms, float(data.get("threshold_ms", 0) or 0))
@@ -630,7 +609,7 @@ class PytestPerformanceMonitor:
             key=lambda item: float(item.get("duration_ms", 0) or 0),
             reverse=True,
         )
-        limit = max(1, AutomationConfig.get_env_int("PERF_MONITOR_SUMMARY_LIMIT", 50))
+        limit = resolved_summary_limit
         merged = {
             "generated_at": time.time(),
             "workers": sorted(set(workers)),

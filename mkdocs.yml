@@ -63,6 +63,7 @@ nav:
       - Framework Architecture: guides/framework-architecture.md
       - Extending the Page Layer: guides/extending-page-layer.md
       - Performance and Correlation: guides/performance-correlation.md
+      - Runtime Configuration: guides/runtime-configuration.md
       - Development: guides/development.md
   - API Reference:
       - Overview: api/index.md

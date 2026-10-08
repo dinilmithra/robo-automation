@@ -13,7 +13,7 @@ from typing import Any, Iterator, Optional
 import pytest
 from playwright.sync_api import Browser, Playwright, sync_playwright
 
-from .config import AutomationConfig
+from .config import AutomationConfig, ArtifactPaths, PerformanceConfig
 from .performance import PytestPerformanceMonitor
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,18 @@ def close_resource(resource: Any, label: str) -> None:
 
 def performance_monitor_lifecycle(
     request: pytest.FixtureRequest,
+    performance_config: PerformanceConfig,
+    artifact_paths: ArtifactPaths,
 ) -> Iterator[Optional[PytestPerformanceMonitor]]:
     """Start one performance monitor per pytest/xdist worker when enabled."""
-    if not AutomationConfig.get_env_bool("PERF_MONITOR_ENABLED", True):
+    if not performance_config.enabled:
         yield None
         return
-    monitor = PytestPerformanceMonitor(request.config)
+    monitor = PytestPerformanceMonitor(
+        request.config,
+        performance_config=performance_config,
+        artifact_paths=artifact_paths,
+    )
     monitor.start()
     request.config._performance_monitor = monitor
     try:

@@ -14,9 +14,15 @@ from typing import Any, Iterator, Optional
 
 import pytest
 from playwright.sync_api import Browser, Error as PlaywrightError, Playwright, expect
-from .config import AutomationConfig
+from .config import (
+    ArtifactPaths,
+    DiagnosticsConfig,
+    LoggingConfig,
+    PerformanceConfig,
+    RuntimeConfig,
+)
 from .correlation import bind_test_context, reset_test_context
-from .logging import LogManager
+from .logging import LogManager, LoggingService
 from .browser import (
     browser_lifecycle,
     performance_monitor_lifecycle,
@@ -51,13 +57,14 @@ def pytest_configure(config: pytest.Config) -> None:
             name="robo_automation_page_alias",
         )
     LogManager.install_correlation_record_factory()
-    LogManager.apply_log_level_from_env(config)
-    LogManager.apply_log_cli_level_from_env(config, logger)
-    LogManager.apply_log_cli_format_from_env(config)
-    LogManager.apply_log_cli_date_format_from_env(config)
-    expect.set_options(timeout=AutomationConfig.get_env_int("WAIT_TIME", 90) * 1000)
-    if not bool(getattr(config.option, "collectonly", False)):
-        LogManager.configure_worker_log_path(config, logger)
+    # Fixtures do not exist during pytest_configure. Resolve a minimal bootstrap
+    # configuration from library defaults + environment and store it for the
+    # fixture layer. Consumer fixture overrides take precedence once fixture
+    # resolution begins.
+    runtime_config = RuntimeConfig.from_env()
+    config._robo_bootstrap_runtime_config = runtime_config
+    LogManager.apply_bootstrap_config(config, runtime_config.logging, logger)
+    expect.set_options(timeout=runtime_config.timeouts.wait_time_seconds * 1000)
 
 
 @pytest.hookimpl(trylast=True)
@@ -70,12 +77,94 @@ def pytest_unconfigure(config: pytest.Config) -> None:
 # =========================================================================
 # GENERIC TEST RESOURCE LIFECYCLE FIXTURES
 # =========================================================================
+@pytest.fixture(scope="session")
+def robo_runtime_config(request: pytest.FixtureRequest) -> RuntimeConfig:
+    """Return the resolved library runtime configuration.
+
+    Consumers may override this fixture. If they do not, environment variables
+    override immutable robo-automation defaults.
+    """
+    return getattr(
+        request.config,
+        "_robo_bootstrap_runtime_config",
+        RuntimeConfig.from_env(),
+    )
+
+
+@pytest.fixture(scope="session")
+def robo_logging_config(robo_runtime_config: RuntimeConfig) -> LoggingConfig:
+    """Expose logging configuration as a consumer-overridable fixture."""
+    return robo_runtime_config.logging
+
+
+@pytest.fixture(scope="session")
+def robo_diagnostics_config(
+    robo_runtime_config: RuntimeConfig,
+) -> DiagnosticsConfig:
+    """Expose browser diagnostic configuration as a consumer-overridable fixture."""
+    return robo_runtime_config.diagnostics
+
+
+@pytest.fixture(scope="session")
+def robo_performance_config(
+    robo_runtime_config: RuntimeConfig,
+) -> PerformanceConfig:
+    """Expose performance configuration as a consumer-overridable fixture."""
+    return robo_runtime_config.performance
+
+
+@pytest.fixture(scope="session")
+def robo_artifact_paths(
+    request: pytest.FixtureRequest,
+    robo_runtime_config: RuntimeConfig,
+) -> ArtifactPaths:
+    """Resolve all generic artifact paths once for the consumer project."""
+    return ArtifactPaths.from_config(
+        request.config.rootpath, robo_runtime_config.artifacts
+    )
+
+
+@pytest.fixture(scope="session")
+def robo_logging_service(
+    robo_logging_config: LoggingConfig,
+    robo_artifact_paths: ArtifactPaths,
+) -> LoggingService:
+    """Construct the session/worker logging service from resolved fixtures."""
+    return LoggingService(robo_logging_config, robo_artifact_paths, logger)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def robo_logging_runtime(
+    request: pytest.FixtureRequest,
+    robo_logging_service: LoggingService,
+) -> Iterator[None]:
+    """Apply runtime logging after consumer fixture overrides are resolved."""
+    if not bool(getattr(request.config.option, "collectonly", False)):
+        robo_logging_service.start_session(request.config)
+    try:
+        yield
+    finally:
+        robo_logging_service.stop_session(request.config)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def robo_runtime_timeout(
+    wait_time: int,
+) -> None:
+    """Apply fixture-resolved timeout configuration to Playwright expectations."""
+    expect.set_options(timeout=wait_time * 1000)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def performance_monitor(
     request: pytest.FixtureRequest,
+    robo_performance_config: PerformanceConfig,
+    robo_artifact_paths: ArtifactPaths,
 ) -> Iterator[Optional[PytestPerformanceMonitor]]:
     """Provide one generic performance monitor per pytest/xdist worker."""
-    yield from performance_monitor_lifecycle(request)
+    yield from performance_monitor_lifecycle(
+        request, robo_performance_config, robo_artifact_paths
+    )
 
 
 @pytest.fixture(scope="session")
@@ -98,7 +187,6 @@ def browser(
     )
 
 
-DEFAULT_WAIT_TIME = 90
 
 
 def _measure_framework(
@@ -175,9 +263,13 @@ def context_options(storage_state: Any) -> dict[str, Any]:
 
 
 @pytest.fixture(scope="session")
-def wait_time() -> int:
-    """Return the generic operation/navigation timeout in seconds."""
-    return DEFAULT_WAIT_TIME
+def wait_time(robo_runtime_config: RuntimeConfig) -> int:
+    """Return the resolved operation/navigation timeout in seconds.
+
+    Consumers may still override this fixture directly; otherwise WAIT_TIME
+    overrides the library default through ``robo_runtime_config``.
+    """
+    return robo_runtime_config.timeouts.wait_time_seconds
 
 
 @pytest.fixture
@@ -209,17 +301,21 @@ def robo_page(
     yield from _default_page_lifecycle(context, performance_monitor)
 
 
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None):
-    """Bind one testcase/process/attempt ID for setup, call, and teardown."""
-    tokens = bind_test_context(item)
-    log_path = LogManager.start_testcase_log(item)
+@pytest.fixture(autouse=True)
+def robo_testcase_logging(
+    request: pytest.FixtureRequest,
+    robo_logging_runtime: None,
+    robo_logging_service: LoggingService,
+) -> Iterator[None]:
+    """Own per-test log handlers using fixture-resolved configuration."""
+    item = request.node
+    robo_logging_service.start_testcase(item)
     logger.info(
         "TESTCASE START nodeid=%s testcase_id=%s process_id=%s attempt=%s",
         item.nodeid,
-        item._robo_test_case_id,
-        item._robo_process_id,
-        item._robo_attempt_id,
+        getattr(item, "_robo_test_case_id", "-"),
+        getattr(item, "_robo_process_id", "-"),
+        getattr(item, "_robo_attempt_id", "-"),
     )
     try:
         yield
@@ -235,12 +331,21 @@ def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None):
         logger.info(
             "TESTCASE END nodeid=%s testcase_id=%s process_id=%s attempt=%s outcome=%s",
             item.nodeid,
-            item._robo_test_case_id,
-            item._robo_process_id,
-            item._robo_attempt_id,
+            getattr(item, "_robo_test_case_id", "-"),
+            getattr(item, "_robo_process_id", "-"),
+            getattr(item, "_robo_attempt_id", "-"),
             outcome,
         )
-        LogManager.stop_testcase_log(item)
+        robo_logging_service.stop_testcase(item)
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None):
+    """Bind one testcase/process/attempt ID for setup, call, and teardown."""
+    tokens = bind_test_context(item)
+    try:
+        yield
+    finally:
         reset_test_context(tokens)
 
 
