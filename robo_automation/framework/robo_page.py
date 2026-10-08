@@ -160,3 +160,13 @@ class RoboPage:
             element_id=element_id,
             excat_match=excat_match,
         )
+
+
+def is_framework_page(value: object) -> bool:
+    """Return whether ``value`` is a robo-automation page wrapper.
+
+    Consumers can use this capability check without importing the concrete page
+    wrapper class, which keeps higher-level projects decoupled from framework
+    implementation types.
+    """
+    return isinstance(value, RoboPage)

@@ -37,3 +37,15 @@ def test_specialize_preserves_underlying_page() -> None:
     assert isinstance(specialized, SpecializedPage)
     assert specialized.same_page(robo_page)
     assert specialized.specialize(SpecializedPage) is specialized
+
+
+def test_is_framework_page_recognizes_page_wrapper() -> None:
+    from types import SimpleNamespace
+
+    from robo_automation import RoboPage, is_framework_page
+
+    page = object.__new__(RoboPage)
+    page._page = SimpleNamespace()
+
+    assert is_framework_page(page) is True
+    assert is_framework_page(object()) is False

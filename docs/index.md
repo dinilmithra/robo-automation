@@ -1,17 +1,34 @@
 # robo-automation
 
-`robo-automation` is the generic automation layer shared by higher-level UI libraries and application test projects. It owns Playwright resource lifecycle, generic wrapper types, pytest integration, correlation, logging, and performance instrumentation. It contains no Appian or CORE business logic.
+`robo-automation` is the shared infrastructure layer for browser automation projects.
 
-The resource chain is:
+If you are writing normal application tests through a higher-level library such as `robo-appian`, you may never need to use this library directly.
+
+## What it handles
+
+- starting and closing browser resources;
+- pytest fixtures;
+- common page/locator wrappers;
+- logging and testcase correlation;
+- browser diagnostics and artifacts;
+- performance monitoring;
+- runtime configuration.
+
+## Configuration rule
+
+Every configurable subsystem follows the same idea:
 
 ```text
-Playwright Browser
+fixture override
     ↓
-RoboBrowserContext
+environment variable
     ↓
-RoboPage
-    ↓
-RoboLocator
+library default
 ```
 
-Higher layers specialize rather than duplicate this lifecycle. `robo-appian` specializes `robo_page` as `AppianPage`; an application such as CORE can then add application login/navigation policy on top.
+If the consumer provides nothing, the library defaults are used.
+
+## Where to start
+
+- **Application developer:** use the higher-level library for your application, such as `robo-appian`.
+- **Framework developer:** read Core Concepts, Pytest Fixtures, Runtime Configuration and Framework Architecture.

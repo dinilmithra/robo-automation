@@ -59,6 +59,7 @@ nav:
       - Installation: getting-started/installation.md
       - Core Concepts: getting-started/concepts.md
       - Pytest Fixtures: getting-started/pytest-fixtures.md
+      - Handling Errors: getting-started/error-handling.md
   - Guides:
       - Framework Architecture: guides/framework-architecture.md
       - Extending the Page Layer: guides/extending-page-layer.md
@@ -76,3 +77,4 @@ nav:
       - Correlation: api/correlation.md
       - Configuration: api/config.md
       - Logging: api/logging.md
+      - Errors: api/errors.md

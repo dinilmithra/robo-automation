@@ -1,13 +1,47 @@
 # Core Concepts
 
-## Generic ownership
+`robo-automation` owns generic browser automation infrastructure. It does not know which business application is being tested.
 
-`BrowserSession`, `RoboBrowserContext`, `RoboPage`, `RoboLocator`, and `Scope` are generic automation contracts/wrappers owned by `robo-automation`. Application-specific libraries should derive or specialize them without introducing an upward dependency from `robo-automation`.
+## Resource model
 
-## Timeout contract
+```text
+Browser
+  ↓
+RoboBrowserContext
+  ↓
+RoboPage
+  ↓
+RoboLocator
+```
 
-The `wait_time` fixture is expressed in **seconds**. `robo-automation` performs the conversion to milliseconds only when assigning Playwright timeout values. Consumers must not multiply fixture values by 1000.
+Higher-level libraries can specialize these wrappers without recreating browser lifecycle.
 
-## Plugin discovery
+## Timeout rule
 
-The distribution registers `robo_automation.pytest_plugin` through the `pytest11` entry-point group. Consumers normally do not add `pytest_plugins` or `-p` declarations for it.
+`wait_time` is expressed in **seconds**.
+
+Consumers should pass values such as:
+
+```text
+WAIT_TIME=90
+```
+
+Do not multiply the value by 1000 in consumer code. `robo-automation` converts it when calling Playwright APIs.
+
+## Configuration rule
+
+Configuration is resolved in this order:
+
+```text
+consumer fixture override
+        ↓
+environment variable
+        ↓
+library default
+```
+
+This means a new project can use the library defaults and only override the settings it actually needs.
+
+## Advanced plugin details
+
+The installed package registers its pytest plugin automatically. Normal test projects should not need to manually add `pytest_plugins` or `-p` declarations.

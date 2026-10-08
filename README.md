@@ -1,74 +1,89 @@
 # robo-automation
 
-Generic browser automation infrastructure shared by application test projects.
+`robo-automation` provides shared browser and pytest infrastructure for automation projects.
 
-## Owns
+Most application test developers do not need to call its internal services directly. Higher-level libraries such as `robo-appian` use it automatically.
 
-- testcase/process/attempt correlation IDs
-- logging context and per-test logs
-- pytest-friendly performance monitoring
-- generic Playwright/browser lifecycle
-- `RoboBrowserContext`, `RoboPage`, `RoboLocator`, and `Scope`
-- pytest fixtures for `performance_monitor`, the Playwright runtime, `browser`, `storage_state`, `context_options`, `wait_time`, `context_page_handler`, `context`, `robo_page`, and `page`
-- the installed `pytest11` plugin entry point (`robo_automation = "robo_automation.pytest_plugin"`)
+## What it provides
 
-The public resource chain is:
+- browser and page lifecycle;
+- pytest fixtures;
+- configurable wait time;
+- logging and correlation;
+- diagnostics and artifacts;
+- performance monitoring;
+- reusable `RoboPage` and `RoboLocator` wrappers.
+
+It intentionally contains no Appian or CORE business logic.
+
+## Basic pytest use
+
+When installed as a pytest plugin, the library can provide browser/page infrastructure automatically.
+
+A higher-level library may replace the public page type while keeping the same browser lifecycle. For example:
 
 ```text
-Playwright Browser
-    ↓
-RoboBrowserContext
-    ↓
-RoboPage
-    ↓
-RoboLocator
+application test
+      ↓
+robo-appian AppianPage
+      ↓
+robo-automation browser lifecycle
+      ↓
+Playwright
 ```
 
-`wait_time` is expressed in **seconds**. `robo-automation` converts it to milliseconds only when calling Playwright timeout APIs.
+## Configuration
 
-`robo_page` owns the generic page lifecycle. Higher-level libraries can specialize that page without recreating its Playwright lifecycle. For standalone `robo-automation` use, a conditional plugin alias exposes `page -> robo_page`; when the `robo-appian` plugin is loaded, that generic alias is not registered so `robo-appian` can expose the Appian-specialized public `page` deterministically.
+Consumers can use the library without defining any configuration. Defaults are built in.
 
-## Does not own
+When a setting needs to change, precedence is:
 
-- application login or business workflows
-- CORE/CIN concepts
-- Appian-specific component behavior
-
-Python imports use `robo_automation`; the distribution/library name is `robo-automation`.
-
-## Publishing
-
-`robo-automation` is a standalone distribution. CORE currently pins `robo-automation==0.1.7`; publish a compatible release before Jenkins or other published-package consumers depend on newer framework APIs.
-
-From the parent workspace, with a Python 3.12 environment that contains Poetry:
-
-```powershell
-python .\robo-automation\tools\publish_robo_automation.py --build-only
-python .\robo-automation\tools\publish_robo_automation.py
+```text
+consumer fixture override
+        ↓
+environment variable
+        ↓
+library default
 ```
 
-The publisher increments the patch version by default, removes any existing `dist/` directory before the build, builds into a temporary output directory, and then stages fresh artifacts. Pass an explicit Poetry version rule/version to override the default patch increment. `--build-only` still increments and keeps the new version.
+Example: if the consumer sets:
 
-Publishing helpers are excluded from the distribution.
-
-## Local development environment
-
-Create a dedicated Python 3.12 environment for this library:
-
-```powershell
-py -3.12 .\robo-automation\tools\setup_venv.py
-.\robo-automation\.venv\Scripts\Activate.ps1
+```text
+PYTEST_LOG_LEVEL=ERROR
 ```
 
-The setup script installs Poetry into the library `.venv`, runs `poetry lock` to refresh an out-of-date lock file, and then runs `poetry install`. You do not need to regenerate `poetry.lock` manually after changing `pyproject.toml` before running the bootstrap.
+and does not override the logging fixture, the effective log level is `ERROR`.
 
-Run commands through Poetry when the environment is not activated:
+## Common public fixtures
 
-```powershell
-poetry run pytest
-poetry run black .
+Important configuration/runtime fixtures include:
+
+```text
+robo_runtime_config
+robo_logging_config
+robo_diagnostics_config
+robo_performance_config
+robo_artifact_paths
+wait_time
+browser
+context
+robo_page
 ```
 
-## Relationship to robo-appian
+Application projects should override policy/configuration fixtures rather than reimplementing generic browser lifecycle.
 
-`robo-appian` depends on these generic abstractions and contains Appian-specific components and interaction helpers. `robo-automation` must not import `robo-appian` or CORE application code.
+## Layering rule
+
+`robo-automation` should contain a feature only when it is application-independent.
+
+- Generic browser/logging/diagnostics/performance → `robo-automation`
+- Appian behavior → `robo-appian`
+- Application workflow/login/business rules → consumer project
+
+## Advanced documentation
+
+Framework maintainers can continue with the Architecture, Runtime Configuration, Performance and API guides in `docs/`.
+## Error handling
+
+Consumer code can catch `RoboAutomationError` when it has a real recovery path. Normal pytest tests should usually let the exception propagate so reports keep the full failure evidence. See `docs/getting-started/error-handling.md`.
+

@@ -552,7 +552,7 @@ class PytestPerformanceMonitor:
         slow_threshold_ms = 0.0
         threshold_ms = 0.0
         workers: List[str] = []
-        resolved_summary_limit = resolved_summary_limit
+        resolved_summary_limit = max(0, int(summary_limit))
 
         for summary_file in summary_files:
             try:

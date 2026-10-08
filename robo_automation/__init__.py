@@ -9,6 +9,7 @@ from .correlation import (
     reset_test_context,
 )
 from .logging import LogManager, LoggingService
+from .errors import RoboAutomationError
 from .config import (
     ArtifactConfig,
     ArtifactPaths,
@@ -19,9 +20,10 @@ from .config import (
     TimeoutConfig,
 )
 from .performance import PytestPerformanceMonitor
-from .framework import BrowserSession, RoboBrowserContext, RoboPage, RoboLocator, Scope
+from .framework import BrowserSession, RoboBrowserContext, RoboPage, RoboLocator, Scope, is_framework_page
 
 __all__ = [
+    "RoboAutomationError",
     "LogManager",
     "LoggingService",
     "RuntimeConfig",
@@ -37,6 +39,7 @@ __all__ = [
     "RoboPage",
     "RoboLocator",
     "Scope",
+    "is_framework_page",
     "bind_test_context",
     "build_attempt_id",
     "build_process_id",
