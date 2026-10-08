@@ -55,9 +55,7 @@ def pytest_configure(config: pytest.Config) -> None:
     LogManager.apply_log_cli_level_from_env(config, logger)
     LogManager.apply_log_cli_format_from_env(config)
     LogManager.apply_log_cli_date_format_from_env(config)
-    expect.set_options(
-        timeout=AutomationConfig.get_env_int("WAIT_TIME", 90) * 1000
-    )
+    expect.set_options(timeout=AutomationConfig.get_env_int("WAIT_TIME", 90) * 1000)
     if not bool(getattr(config.option, "collectonly", False)):
         LogManager.configure_worker_log_path(config, logger)
 
@@ -143,7 +141,9 @@ def _default_context_lifecycle(
             except PlaywrightError as exc:
                 message = str(exc).lower()
                 if "closed" not in message and "target" not in message:
-                    logger.warning("Unable to explicitly close browser context: %s", exc)
+                    logger.warning(
+                        "Unable to explicitly close browser context: %s", exc
+                    )
 
 
 def _default_page_lifecycle(
@@ -254,4 +254,3 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
         phase_reports = {}
         item.phase_reports = phase_reports
     phase_reports[report.when] = report
-

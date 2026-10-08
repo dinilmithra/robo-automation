@@ -78,7 +78,11 @@ def main() -> int:
     print("\nrobo-automation virtual environment is ready.")
     print(f"Python: {python}")
     print(f"Activate: {_activation_hint()}")
-    print("VS Code: code .\\robo-automation\\robo-automation.code-workspace" if os.name == "nt" else "VS Code: code ./robo-automation/robo-automation.code-workspace")
+    print(
+        "VS Code: code .\\robo-automation\\robo-automation.code-workspace"
+        if os.name == "nt"
+        else "VS Code: code ./robo-automation/robo-automation.code-workspace"
+    )
     return 0
 
 

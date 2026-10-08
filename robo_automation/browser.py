@@ -81,11 +81,15 @@ def _launch_browser_in_slot(
 
     if not AutomationConfig.get_env_bool("ENABLE_BROWSER_LAUNCH_DELAY", False):
         return launch()
-    interval = max(0, AutomationConfig.get_env_int("BROWSER_LAUNCH_INTERVAL_SECONDS", 0))
+    interval = max(
+        0, AutomationConfig.get_env_int("BROWSER_LAUNCH_INTERVAL_SECONDS", 0)
+    )
     if interval == 0:
         return launch()
 
-    cache_path = Path(AutomationConfig.get_env_string("CACHE_PATH", "artifacts/runtime/cache"))
+    cache_path = Path(
+        AutomationConfig.get_env_string("CACHE_PATH", "artifacts/runtime/cache")
+    )
     if not cache_path.is_absolute():
         cache_path = Path(config.rootpath) / cache_path
     cache_path.mkdir(parents=True, exist_ok=True)
@@ -106,7 +110,9 @@ def _launch_browser_in_slot(
             except OSError:
                 pass
             if time.monotonic() - started >= lock_timeout:
-                raise TimeoutError(f"Timed out waiting for browser launch gate: {lock_path}")
+                raise TimeoutError(
+                    f"Timed out waiting for browser launch gate: {lock_path}"
+                )
             threading.Event().wait(0.1)
     try:
         last_launch = 0.0
@@ -139,7 +145,9 @@ def browser_lifecycle(
     browser_name = AutomationConfig.get_env_string("BROWSER", "chromium").lower()
     browser_type = getattr(playwright, browser_name, playwright.chromium)
     worker_id = str(getattr(request.config, "workerinput", {}).get("workerid", ""))
-    with _measure(performance_monitor, "browser_launch", browser=browser_name, headless=headless):
+    with _measure(
+        performance_monitor, "browser_launch", browser=browser_name, headless=headless
+    ):
         browser = _launch_browser_in_slot(
             request.config, worker_id or "serial", browser_type, headless=headless
         )

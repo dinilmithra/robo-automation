@@ -16,7 +16,6 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from typing import Any
 
-
 _TEST_CASE_ID: ContextVar[str] = ContextVar("robo_test_case_id", default="")
 _PROCESS_ID: ContextVar[str] = ContextVar("robo_process_id", default="")
 _ATTEMPT_ID: ContextVar[str] = ContextVar("robo_attempt_id", default="")

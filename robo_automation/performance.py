@@ -81,7 +81,9 @@ class PytestPerformanceMonitor:
             try:
                 path.relative_to(root_path)
             except ValueError:
-                run_id = AutomationConfig.get_env_string("PERF_MONITOR_RUN_ID", "run-unknown")
+                run_id = AutomationConfig.get_env_string(
+                    "PERF_MONITOR_RUN_ID", "run-unknown"
+                )
                 path /= run_id
 
         path.mkdir(parents=True, exist_ok=True)
@@ -106,9 +108,15 @@ class PytestPerformanceMonitor:
         )
         self._pending_writes = 0
 
-        self.actions_enabled = AutomationConfig.get_env_bool("PERF_MONITOR_ACTIONS", True)
-        self.framework_enabled = AutomationConfig.get_env_bool("PERF_MONITOR_FRAMEWORK", True)
-        self.console_enabled = AutomationConfig.get_env_bool("PERF_MONITOR_CONSOLE", False)
+        self.actions_enabled = AutomationConfig.get_env_bool(
+            "PERF_MONITOR_ACTIONS", True
+        )
+        self.framework_enabled = AutomationConfig.get_env_bool(
+            "PERF_MONITOR_FRAMEWORK", True
+        )
+        self.console_enabled = AutomationConfig.get_env_bool(
+            "PERF_MONITOR_CONSOLE", False
+        )
         self.threshold_ms = max(
             0.0,
             float(

@@ -109,17 +109,9 @@ class RoboPage:
         """Create a text locator through the controlled page interface."""
         return self._page.get_by_text(text, **kwargs)
 
-    def get_by_label(self, text: str | Pattern[str], **kwargs: Any) -> Locator:
-        """Create a label locator through the controlled page interface."""
-        return self._page.get_by_label(text, **kwargs)
-
     def get_by_title(self, text: str | Pattern[str], **kwargs: Any) -> Locator:
         """Create a title locator through the controlled page interface."""
         return self._page.get_by_title(text, **kwargs)
-
-    def get_by_placeholder(self, text: str | Pattern[str], **kwargs: Any) -> Locator:
-        """Create a placeholder locator through the controlled page interface."""
-        return self._page.get_by_placeholder(text, **kwargs)
 
     def press(self, selector: str, key: str, **kwargs: Any) -> None:
         """Press ``key`` on an element matching ``selector``."""
@@ -139,7 +131,11 @@ class RoboPage:
 
     def open_pages(self) -> list["RoboPage"]:
         """Return all open pages in this page's browser context."""
-        return [type(self).get(page) for page in self._page.context.pages if not page.is_closed()]
+        return [
+            type(self).get(page)
+            for page in self._page.context.pages
+            if not page.is_closed()
+        ]
 
     def get_by_attributes(
         self,

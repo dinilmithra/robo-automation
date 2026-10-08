@@ -25,14 +25,15 @@ class LogManager:
         "NOTSET",
     }
 
-
     @staticmethod
     def _with_correlation_fields(format_string: str) -> str:
         """Ensure a logging format renders testcase/process correlation IDs."""
         value = str(format_string or "%(asctime)s - %(levelname)s - %(message)s")
         if "%(process_id)" in value:
             return value
-        correlation = "[TC=%(test_case_id)s] [PROCESS=%(process_id)s] [ATTEMPT=%(attempt_id)s]"
+        correlation = (
+            "[TC=%(test_case_id)s] [PROCESS=%(process_id)s] [ATTEMPT=%(attempt_id)s]"
+        )
         if "%(message)s" in value:
             return value.replace("%(message)s", f"{correlation} %(message)s", 1)
         return f"{value} {correlation}"
@@ -78,7 +79,9 @@ class LogManager:
         log_path = log_dir / f"{process_id}.log"
 
         handler = logging.FileHandler(log_path, encoding="utf-8")
-        effective_level = LogManager.resolve_effective_log_level(item.config, logging.getLogger(__name__))
+        effective_level = LogManager.resolve_effective_log_level(
+            item.config, logging.getLogger(__name__)
+        )
         handler.setLevel(getattr(logging, effective_level, logging.INFO))
         handler.setFormatter(
             logging.Formatter(
@@ -173,7 +176,9 @@ class LogManager:
     @staticmethod
     def apply_log_cli_date_format_from_env(config: Any) -> None:
         """Apply the configured console date format to pytest."""
-        cli_date_format = AutomationConfig.get_env_string("PYTEST_LOG_CLI_DATE_FORMAT", "")
+        cli_date_format = AutomationConfig.get_env_string(
+            "PYTEST_LOG_CLI_DATE_FORMAT", ""
+        )
         if cli_date_format:
             config.option.log_cli_date_format = cli_date_format
 
