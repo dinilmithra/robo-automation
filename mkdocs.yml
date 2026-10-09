@@ -70,6 +70,7 @@ nav:
       - Pytest Fixtures: getting-started/pytest-fixtures.md
       - Handling Errors: getting-started/error-handling.md
   - Guides:
+      - Action Snapshots: guides/action-snapshots.md
       - Framework Architecture: guides/framework-architecture.md
       - Extending the Page Layer: guides/extending-page-layer.md
       - Performance and Correlation: guides/performance-correlation.md

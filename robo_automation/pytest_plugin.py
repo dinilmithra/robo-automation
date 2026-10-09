@@ -17,6 +17,7 @@ from typing import Any, Iterator, Optional
 import pytest
 from playwright.sync_api import Browser, Error as PlaywrightError, Playwright, expect
 from .config import (
+    ActionSnapshotConfig,
     ArtifactPaths,
     DiagnosticsConfig,
     LoggingConfig,
@@ -31,6 +32,7 @@ from .browser import (
     playwright_lifecycle,
 )
 from .performance import PytestPerformanceMonitor
+from .action_snapshots import ActionSnapshotMonitor
 from .framework import RoboBrowserContext, RoboPage
 
 logger = logging.getLogger(__name__)
@@ -171,6 +173,14 @@ def robo_performance_config(
 
 
 @pytest.fixture(scope="session")
+def robo_action_snapshot_config(
+    robo_runtime_config: RuntimeConfig,
+) -> ActionSnapshotConfig:
+    """Expose before/after action snapshot configuration."""
+    return robo_runtime_config.action_snapshots
+
+
+@pytest.fixture(scope="session")
 def robo_artifact_paths(
     request: pytest.FixtureRequest,
     robo_runtime_config: RuntimeConfig,
@@ -222,6 +232,31 @@ def performance_monitor(
     yield from performance_monitor_lifecycle(
         request, robo_performance_config, robo_artifact_paths
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def action_snapshot_monitor(
+    request: pytest.FixtureRequest,
+    performance_monitor: Optional[PytestPerformanceMonitor],
+    robo_action_snapshot_config: ActionSnapshotConfig,
+    robo_artifact_paths: ArtifactPaths,
+) -> Iterator[Optional[ActionSnapshotMonitor]]:
+    """Capture paired before/after snapshots around Playwright UI actions."""
+    del performance_monitor  # dependency guarantees timing patch is installed first
+    if not robo_action_snapshot_config.enabled:
+        yield None
+        return
+    worker_id = str(
+        getattr(request.config, "workerinput", {}).get("workerid", "master")
+    )
+    monitor = ActionSnapshotMonitor(
+        robo_action_snapshot_config, robo_artifact_paths, worker_id=worker_id
+    )
+    monitor.start()
+    try:
+        yield monitor
+    finally:
+        monitor.stop()
 
 
 @pytest.fixture(scope="session")

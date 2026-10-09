@@ -9,8 +9,10 @@ from .correlation import (
     reset_test_context,
 )
 from .logging import LogManager, LoggingService
+from .action_snapshots import ActionSnapshotMonitor
 from .errors import RoboAutomationError, RoboNavigationError
 from .config import (
+    ActionSnapshotConfig,
     ArtifactConfig,
     ArtifactPaths,
     DiagnosticsConfig,
@@ -29,6 +31,8 @@ __all__ = [
     "LoggingService",
     "RuntimeConfig",
     "LoggingConfig",
+    "ActionSnapshotConfig",
+    "ActionSnapshotMonitor",
     "ArtifactConfig",
     "ArtifactPaths",
     "DiagnosticsConfig",

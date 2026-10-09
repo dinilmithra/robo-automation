@@ -99,6 +99,7 @@ class ArtifactConfig:
     performance_logs: str = "artifacts/logs/performance"
     browser_diagnostics: str = "artifacts/browser-actions"
     failure_evidence: str = "artifacts/evidence/failures"
+    action_snapshots: str = "artifacts/evidence/actions"
 
     @classmethod
     def from_env(cls) -> "ArtifactConfig":
@@ -119,6 +120,9 @@ class ArtifactConfig:
             failure_evidence=_env_string(
                 "FAILURE_EVIDENCE_PATH", defaults.failure_evidence
             ),
+            action_snapshots=_env_string(
+                "SNAPSHOT_PATH", defaults.action_snapshots
+            ),
         )
 
 
@@ -132,6 +136,7 @@ class ArtifactPaths:
     performance_logs: Path
     browser_diagnostics: Path
     failure_evidence: Path
+    action_snapshots: Path
 
     @staticmethod
     def _resolve(rootpath: Path, value: str) -> Path:
@@ -150,6 +155,7 @@ class ArtifactPaths:
             performance_logs=cls._resolve(rootpath, config.performance_logs),
             browser_diagnostics=cls._resolve(rootpath, config.browser_diagnostics),
             failure_evidence=cls._resolve(rootpath, config.failure_evidence),
+            action_snapshots=cls._resolve(rootpath, config.action_snapshots),
         )
 
 
@@ -180,6 +186,24 @@ class DiagnosticsConfig:
             capture_navigation=_env_bool(
                 "BROWSER_DIAGNOSTICS_NAVIGATION", defaults.capture_navigation
             ),
+        )
+
+
+@dataclass(frozen=True)
+class ActionSnapshotConfig:
+    """Before/after evidence capture for browser actions."""
+
+    enabled: bool = False
+    capture_html: bool = True
+    full_page: bool = False
+
+    @classmethod
+    def from_env(cls) -> "ActionSnapshotConfig":
+        defaults = cls()
+        return cls(
+            enabled=_env_bool("CAPTURE_ACTION_SNAPSHOTS", defaults.enabled),
+            capture_html=_env_bool("ACTION_SNAPSHOT_HTML", defaults.capture_html),
+            full_page=_env_bool("ACTION_SNAPSHOT_FULL_PAGE", defaults.full_page),
         )
 
 
@@ -256,6 +280,7 @@ class RuntimeConfig:
     artifacts: ArtifactConfig
     diagnostics: DiagnosticsConfig
     performance: PerformanceConfig
+    action_snapshots: ActionSnapshotConfig
     timeouts: TimeoutConfig
 
     @classmethod
@@ -265,6 +290,7 @@ class RuntimeConfig:
             artifacts=ArtifactConfig(),
             diagnostics=DiagnosticsConfig(),
             performance=PerformanceConfig(),
+            action_snapshots=ActionSnapshotConfig(),
             timeouts=TimeoutConfig(),
         )
 
@@ -275,6 +301,7 @@ class RuntimeConfig:
             artifacts=ArtifactConfig.from_env(),
             diagnostics=DiagnosticsConfig.from_env(),
             performance=PerformanceConfig.from_env(),
+            action_snapshots=ActionSnapshotConfig.from_env(),
             timeouts=TimeoutConfig.from_env(),
         )
 

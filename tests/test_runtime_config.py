@@ -10,6 +10,7 @@ def test_runtime_config_uses_library_defaults_when_consumer_supplies_nothing(mon
         "TESTCASE_LOG_ENABLED",
         "ENABLE_BROWSER_DIAGNOSTICS",
         "PERF_MONITOR_ENABLED",
+        "CAPTURE_ACTION_SNAPSHOTS",
         "WAIT_TIME",
         "ARTIFACTS_ROOT",
     ):
@@ -22,6 +23,7 @@ def test_runtime_config_uses_library_defaults_when_consumer_supplies_nothing(mon
     assert config.logging.testcase_file_enabled is True
     assert config.diagnostics.enabled is False
     assert config.performance.enabled is True
+    assert config.action_snapshots.enabled is False
     assert config.timeouts.wait_time_seconds == 90
     assert config.artifacts.root == "artifacts"
 
@@ -32,6 +34,7 @@ def test_runtime_config_environment_overrides_library_defaults(monkeypatch):
     monkeypatch.setenv("TESTCASE_LOG_ENABLED", "N")
     monkeypatch.setenv("ENABLE_BROWSER_DIAGNOSTICS", "Y")
     monkeypatch.setenv("PERF_MONITOR_ENABLED", "N")
+    monkeypatch.setenv("CAPTURE_ACTION_SNAPSHOTS", "Y")
     monkeypatch.setenv("WAIT_TIME", "30")
     monkeypatch.setenv("ARTIFACTS_ROOT", "../runtime-artifacts")
 
@@ -42,6 +45,7 @@ def test_runtime_config_environment_overrides_library_defaults(monkeypatch):
     assert config.logging.testcase_file_enabled is False
     assert config.diagnostics.enabled is True
     assert config.performance.enabled is False
+    assert config.action_snapshots.enabled is True
     assert config.timeouts.wait_time_seconds == 30
     assert config.artifacts.root == "../runtime-artifacts"
 
@@ -55,6 +59,7 @@ def test_artifact_paths_resolve_relative_paths_from_consumer_root(tmp_path):
     assert paths.execution_logs == tmp_path / "artifacts/logs/execution"
     assert paths.testcase_logs == tmp_path / "artifacts/logs/testcases"
     assert paths.performance_logs == tmp_path / "artifacts/logs/performance"
+    assert paths.action_snapshots == tmp_path / "artifacts/evidence/actions"
 
 
 def test_absolute_artifact_override_is_preserved(tmp_path, monkeypatch):
