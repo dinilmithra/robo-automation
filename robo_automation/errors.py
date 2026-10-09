@@ -45,3 +45,9 @@ class RoboAutomationError(RuntimeError):
             "message": str(self),
             "details": dict(self.details),
         }
+
+
+class RoboNavigationError(RoboAutomationError):
+    """Navigation failure translated from the underlying browser engine."""
+
+    default_code = "ROBO_NAVIGATION_ERROR"

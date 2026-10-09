@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Pattern
 
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Error as PlaywrightError, Locator, Page
+
+from robo_automation.errors import RoboNavigationError
 
 from robo_automation.framework.robo_locator import RoboLocator
 
@@ -48,12 +50,33 @@ class RoboPage:
         return self._page.main_frame
 
     def goto(self, url: str, **kwargs: Any):
-        """Navigate to ``url``."""
-        return self._page.goto(url, **kwargs)
+        """Navigate to ``url`` and translate browser-engine failures."""
+        try:
+            return self._page.goto(url, **kwargs)
+        except PlaywrightError as exc:
+            message = str(exc)
+            code = (
+                "ROBO_NAVIGATION_ABORTED"
+                if "ERR_ABORTED" in message
+                else "ROBO_NAVIGATION_ERROR"
+            )
+            raise RoboNavigationError(
+                f"Navigation failed for {url}: {message}",
+                code=code,
+                details={"url": url, "browser_error": message},
+            ) from exc
 
     def reload(self, **kwargs: Any):
-        """Reload the current page."""
-        return self._page.reload(**kwargs)
+        """Reload the current page and translate browser-engine failures."""
+        try:
+            return self._page.reload(**kwargs)
+        except PlaywrightError as exc:
+            message = str(exc)
+            raise RoboNavigationError(
+                f"Page reload failed: {message}",
+                code="ROBO_RELOAD_ERROR",
+                details={"url": self.url, "browser_error": message},
+            ) from exc
 
     def title(self) -> str:
         """Return the document title."""

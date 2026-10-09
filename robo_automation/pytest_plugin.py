@@ -8,6 +8,8 @@ correlation lifecycle.
 from __future__ import annotations
 
 import logging
+import os
+from datetime import datetime
 from collections.abc import Callable
 from contextlib import nullcontext
 from typing import Any, Iterator, Optional
@@ -64,12 +66,67 @@ def pytest_configure(config: pytest.Config) -> None:
     runtime_config = RuntimeConfig.from_env()
     config._robo_bootstrap_runtime_config = runtime_config
     LogManager.apply_bootstrap_config(config, runtime_config.logging, logger)
+
+    collect_only = bool(getattr(config.option, "collectonly", False))
+    numprocesses = int(getattr(config.option, "numprocesses", 0) or 0)
+    if (
+        not hasattr(config, "workerinput")
+        and not collect_only
+        and numprocesses > 0
+        and runtime_config.performance.enabled
+    ):
+        os.environ.setdefault(
+            "PERF_MONITOR_RUN_ID",
+            f"run-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.getpid()}",
+        )
+        artifact_paths = ArtifactPaths.from_config(
+            config.rootpath, runtime_config.artifacts
+        )
+        monitor = PytestPerformanceMonitor(
+            config,
+            performance_config=runtime_config.performance,
+            artifact_paths=artifact_paths,
+        )
+        monitor.start()
+        config._master_performance_monitor = monitor
+        config._robo_performance_finalized = False
     expect.set_options(timeout=runtime_config.timeouts.wait_time_seconds * 1000)
+
+
+def _finalize_controller_performance(config: pytest.Config) -> None:
+    """Stop controller monitoring and merge worker summaries exactly once."""
+    if hasattr(config, "workerinput") or bool(
+        getattr(config, "_robo_performance_finalized", False)
+    ):
+        return
+    monitor = getattr(config, "_master_performance_monitor", None)
+    if monitor is not None:
+        monitor.stop()
+        config._master_performance_monitor = None
+    runtime_config = getattr(
+        config, "_robo_bootstrap_runtime_config", RuntimeConfig.from_env()
+    )
+    if runtime_config.performance.enabled:
+        artifact_paths = ArtifactPaths.from_config(
+            config.rootpath, runtime_config.artifacts
+        )
+        PytestPerformanceMonitor.merge_worker_summaries(
+            artifact_paths.performance_logs,
+            summary_limit=runtime_config.performance.summary_limit,
+        )
+    config._robo_performance_finalized = True
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Finalize generic controller performance after worker shutdown."""
+    _finalize_controller_performance(session.config)
 
 
 @pytest.hookimpl(trylast=True)
 def pytest_unconfigure(config: pytest.Config) -> None:
-    """Release generic logging resources."""
+    """Release generic runtime resources."""
+    _finalize_controller_performance(config)
     LogManager.unconfigure_parallel_file_handler(config)
     LogManager.restore_record_factory()
 

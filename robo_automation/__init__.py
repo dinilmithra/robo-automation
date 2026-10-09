@@ -9,7 +9,7 @@ from .correlation import (
     reset_test_context,
 )
 from .logging import LogManager, LoggingService
-from .errors import RoboAutomationError
+from .errors import RoboAutomationError, RoboNavigationError
 from .config import (
     ArtifactConfig,
     ArtifactPaths,
@@ -24,6 +24,7 @@ from .framework import BrowserSession, RoboBrowserContext, RoboPage, RoboLocator
 
 __all__ = [
     "RoboAutomationError",
+    "RoboNavigationError",
     "LogManager",
     "LoggingService",
     "RuntimeConfig",
