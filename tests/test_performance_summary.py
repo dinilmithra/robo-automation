@@ -22,9 +22,7 @@ def test_merge_worker_summaries_uses_configured_summary_limit(tmp_path):
         json.dumps(worker_summary), encoding="utf-8"
     )
 
-    output = PytestPerformanceMonitor.merge_worker_summaries(
-        tmp_path, summary_limit=1
-    )
+    output = PytestPerformanceMonitor.merge_worker_summaries(tmp_path, summary_limit=1)
 
     assert output == tmp_path / "performance-summary.json"
     merged = json.loads(output.read_text(encoding="utf-8"))

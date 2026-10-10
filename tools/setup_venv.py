@@ -71,7 +71,9 @@ def main() -> int:
 
     # Clear cached PyPI metadata before resolving dependencies so newly published
     # package versions are visible to Poetry.
-    _run([str(python), "-m", "poetry", "cache", "clear", "PyPI", "--all", "-n"], env=env)
+    _run(
+        [str(python), "-m", "poetry", "cache", "clear", "PyPI", "--all", "-n"], env=env
+    )
 
     # Keep poetry.lock synchronized with pyproject.toml before installation.
     # This makes the bootstrap script resilient to dependency/version updates.

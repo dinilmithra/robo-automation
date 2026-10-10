@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from pathlib import Path
+import os
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from playwright.sync_api import Locator, Page
@@ -21,6 +22,62 @@ logger = logging.getLogger(__name__)
 def _safe_token(value: object, limit: int = 80) -> str:
     token = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "")).strip("-._")
     return (token or "unknown")[:limit]
+
+
+_runtime_lock = threading.Lock()
+_runtime_monitor: Optional["ActionSnapshotMonitor"] = None
+
+
+def ensure_action_snapshot_monitor(
+    *,
+    config: ActionSnapshotConfig | None = None,
+    artifact_paths: ArtifactPaths | None = None,
+    rootpath: Path | None = None,
+    worker_id: str | None = None,
+) -> Optional["ActionSnapshotMonitor"]:
+    """Start the process-local action snapshot monitor when enabled.
+
+    This is intentionally safe to call from both pytest fixtures and the
+    framework page boundary.  The page-boundary call makes snapshot capture
+    resilient to plugin/fixture ordering and guarantees each xdist worker can
+    activate capture before its first browser action.
+    """
+    global _runtime_monitor
+    with _runtime_lock:
+        if _runtime_monitor is not None:
+            return _runtime_monitor
+
+        if config is None or artifact_paths is None:
+            from .config import RuntimeConfig
+
+            runtime = RuntimeConfig.from_env()
+            config = runtime.action_snapshots
+            if not config.enabled:
+                return None
+            artifact_paths = ArtifactPaths.from_config(
+                rootpath or Path.cwd(), runtime.artifacts
+            )
+        elif not config.enabled:
+            return None
+
+        monitor = ActionSnapshotMonitor(
+            config,
+            artifact_paths,
+            worker_id=worker_id or os.getenv("PYTEST_XDIST_WORKER", "master"),
+        )
+        monitor.start()
+        _runtime_monitor = monitor
+        return monitor
+
+
+def stop_action_snapshot_monitor() -> None:
+    """Stop and clear the process-local action snapshot monitor."""
+    global _runtime_monitor
+    with _runtime_lock:
+        monitor = _runtime_monitor
+        _runtime_monitor = None
+    if monitor is not None:
+        monitor.stop()
 
 
 class ActionSnapshotMonitor:
@@ -37,6 +94,8 @@ class ActionSnapshotMonitor:
         "go_back",
         "go_forward",
         "set_content",
+        "wait_for_load_state",
+        "wait_for_timeout",
     )
 
     _LOCATOR_ACTIONS: Tuple[str, ...] = (
@@ -57,6 +116,7 @@ class ActionSnapshotMonitor:
         "set_input_files",
         "drag_to",
         "scroll_into_view_if_needed",
+        "wait_for",
     )
 
     def __init__(
@@ -68,7 +128,10 @@ class ActionSnapshotMonitor:
     ) -> None:
         self.config = config
         self.worker_id = _safe_token(worker_id, 32)
-        self.root = artifact_paths.action_snapshots / self.worker_id
+        self.root = artifact_paths.action_snapshots
+        self.screenshot_root = self.root / "screenshots" / self.worker_id
+        self.html_root = self.root / "html" / self.worker_id
+        self.metadata_root = self.root / "metadata" / self.worker_id
         self._original_methods: Dict[Tuple[type, str], Callable[..., Any]] = {}
         self._lock = threading.Lock()
         self._sequence = 0
@@ -76,7 +139,10 @@ class ActionSnapshotMonitor:
     def start(self) -> None:
         if not self.config.enabled:
             return
-        self.root.mkdir(parents=True, exist_ok=True)
+        self.screenshot_root.mkdir(parents=True, exist_ok=True)
+        if self.config.capture_html:
+            self.html_root.mkdir(parents=True, exist_ok=True)
+        self.metadata_root.mkdir(parents=True, exist_ok=True)
         for name in self._PAGE_ACTIONS:
             self._patch_method(Page, name, "page")
         for name in self._LOCATOR_ACTIONS:
@@ -201,12 +267,17 @@ class ActionSnapshotMonitor:
             f"{sequence:05d}__{_safe_token(action, 40)}__{_safe_token(phase, 24)}"
             f"__{process_id}"
         )
-        directory = self.root / process_id
+        screenshot_dir = self.screenshot_root / process_id
+        html_dir = self.html_root / process_id
+        metadata_dir = self.metadata_root / process_id
         try:
-            directory.mkdir(parents=True, exist_ok=True)
-            screenshot_path = directory / f"{stem}.png"
-            html_path = directory / f"{stem}.html"
-            metadata_path = directory / f"{stem}.json"
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+            if self.config.capture_html:
+                html_dir.mkdir(parents=True, exist_ok=True)
+            metadata_dir.mkdir(parents=True, exist_ok=True)
+            screenshot_path = screenshot_dir / f"{stem}.png"
+            html_path = html_dir / f"{stem}.html"
+            metadata_path = metadata_dir / f"{stem}.json"
 
             page.screenshot(path=str(screenshot_path), full_page=self.config.full_page)
             if self.config.capture_html:

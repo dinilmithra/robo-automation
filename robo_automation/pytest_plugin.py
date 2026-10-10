@@ -17,7 +17,7 @@ from typing import Any, Iterator, Optional
 import pytest
 from playwright.sync_api import Browser, Error as PlaywrightError, Playwright, expect
 from .config import (
-    ActionSnapshotConfig,
+    SnapshotConfig,
     ArtifactPaths,
     DiagnosticsConfig,
     LoggingConfig,
@@ -32,7 +32,7 @@ from .browser import (
     playwright_lifecycle,
 )
 from .performance import PytestPerformanceMonitor
-from .action_snapshots import ActionSnapshotMonitor
+from .snapshot_evidence import SnapshotService, ensure_snapshot_service, stop_snapshot_service
 from .framework import RoboBrowserContext, RoboPage
 
 logger = logging.getLogger(__name__)
@@ -143,11 +143,13 @@ def robo_runtime_config(request: pytest.FixtureRequest) -> RuntimeConfig:
     Consumers may override this fixture. If they do not, environment variables
     override immutable robo-automation defaults.
     """
-    return getattr(
-        request.config,
-        "_robo_bootstrap_runtime_config",
-        RuntimeConfig.from_env(),
-    )
+    # Resolve again at fixture time. Consumer projects commonly load their
+    # application .env files from conftest.py after plugin bootstrap hooks have
+    # been imported. Reusing the bootstrap snapshot here would freeze those
+    # earlier values (for example CAPTURE_ACTION_SNAPSHOTS=N) for the session.
+    # Fixture resolution is the correct point for runtime services to consume
+    # the final environment.
+    return RuntimeConfig.from_env()
 
 
 @pytest.fixture(scope="session")
@@ -173,11 +175,11 @@ def robo_performance_config(
 
 
 @pytest.fixture(scope="session")
-def robo_action_snapshot_config(
+def robo_snapshot_config(
     robo_runtime_config: RuntimeConfig,
-) -> ActionSnapshotConfig:
-    """Expose before/after action snapshot configuration."""
-    return robo_runtime_config.action_snapshots
+) -> SnapshotConfig:
+    """Expose unified action/failure snapshot configuration."""
+    return robo_runtime_config.snapshots
 
 
 @pytest.fixture(scope="session")
@@ -235,28 +237,29 @@ def performance_monitor(
 
 
 @pytest.fixture(scope="session", autouse=True)
-def action_snapshot_monitor(
+def snapshot_service(
     request: pytest.FixtureRequest,
     performance_monitor: Optional[PytestPerformanceMonitor],
-    robo_action_snapshot_config: ActionSnapshotConfig,
+    robo_snapshot_config: SnapshotConfig,
     robo_artifact_paths: ArtifactPaths,
-) -> Iterator[Optional[ActionSnapshotMonitor]]:
+) -> Iterator[Optional[SnapshotService]]:
     """Capture paired before/after snapshots around Playwright UI actions."""
     del performance_monitor  # dependency guarantees timing patch is installed first
-    if not robo_action_snapshot_config.enabled:
+    if not robo_snapshot_config.enabled:
         yield None
         return
     worker_id = str(
         getattr(request.config, "workerinput", {}).get("workerid", "master")
     )
-    monitor = ActionSnapshotMonitor(
-        robo_action_snapshot_config, robo_artifact_paths, worker_id=worker_id
+    monitor = ensure_snapshot_service(
+        config=robo_snapshot_config,
+        artifact_paths=robo_artifact_paths,
+        worker_id=worker_id,
     )
-    monitor.start()
     try:
         yield monitor
     finally:
-        monitor.stop()
+        stop_snapshot_service()
 
 
 @pytest.fixture(scope="session")
@@ -271,14 +274,19 @@ def robo_automation_playwright(
 def browser(
     robo_automation_playwright: Playwright,
     performance_monitor: Optional[PytestPerformanceMonitor],
+    snapshot_service: Optional[SnapshotService],
     request: pytest.FixtureRequest,
 ) -> Iterator[Browser]:
-    """Own the public raw Playwright browser for one pytest session/worker."""
+    """Own the public raw Playwright browser for one pytest session/worker.
+
+    ``snapshot_service`` is an explicit dependency so snapshot
+    instrumentation is installed before any browser/context/page can execute
+    actions.  Do not rely only on autouse fixture ordering for evidence capture.
+    """
+    del snapshot_service  # dependency guarantees evidence service is active
     yield from browser_lifecycle(
         robo_automation_playwright, performance_monitor, request
     )
-
-
 
 
 def _measure_framework(

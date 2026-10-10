@@ -14,10 +14,10 @@ services consume resolved configuration objects instead of reaching into
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
 
 _TRUE_VALUES = {"1", "true", "yes", "y", "on"}
 
@@ -25,6 +25,40 @@ _TRUE_VALUES = {"1", "true", "yes", "y", "on"}
 def _env_string(name: str, default: str = "") -> str:
     value = os.getenv(name)
     return default if value is None else str(value)
+
+
+_ENV_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _expand_env_references(value: str, *, source: str, max_depth: int = 20) -> str:
+    """Recursively expand ${VAR} references without silently dropping values."""
+    result = str(value)
+    seen = {result}
+    for _ in range(max_depth):
+        names = _ENV_REFERENCE.findall(result)
+        if not names:
+            return result
+        missing = sorted({name for name in names if os.getenv(name) is None})
+        if missing:
+            raise ValueError(
+                f"Unresolved environment variable(s) in {source}: "
+                + ", ".join(missing)
+            )
+        empty = sorted({name for name in names if not os.environ[name].strip()})
+        if empty:
+            raise ValueError(
+                f"Empty environment variable(s) in {source}: " + ", ".join(empty)
+            )
+        result = _ENV_REFERENCE.sub(lambda match: os.environ[match.group(1)], result)
+        if result in seen:
+            raise ValueError(f"Cyclic environment variable reference in {source}: {value}")
+        seen.add(result)
+    raise ValueError(f"Environment expansion exceeded {max_depth} levels in {source}: {value}")
+
+
+def _env_path(name: str, default: str = "") -> str:
+    """Read an environment-backed path and recursively expand ${VAR} references."""
+    return _expand_env_references(_env_string(name, default), source=name)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -98,31 +132,25 @@ class ArtifactConfig:
     testcase_logs: str = "artifacts/logs/testcases"
     performance_logs: str = "artifacts/logs/performance"
     browser_diagnostics: str = "artifacts/browser-actions"
-    failure_evidence: str = "artifacts/evidence/failures"
     action_snapshots: str = "artifacts/evidence/actions"
 
     @classmethod
     def from_env(cls) -> "ArtifactConfig":
         defaults = cls()
-        root = _env_string("ARTIFACTS_ROOT", defaults.root)
+        root = _env_path("ARTIFACTS_ROOT", defaults.root)
         return cls(
             root=root,
-            execution_logs=_env_string(
+            execution_logs=_env_path(
                 "PYTEST_PARALLEL_LOG_PATH", defaults.execution_logs
             ),
-            testcase_logs=_env_string("TESTCASE_LOG_PATH", defaults.testcase_logs),
-            performance_logs=_env_string(
+            testcase_logs=_env_path("TESTCASE_LOG_PATH", defaults.testcase_logs),
+            performance_logs=_env_path(
                 "PERF_MONITOR_PATH", defaults.performance_logs
             ),
-            browser_diagnostics=_env_string(
+            browser_diagnostics=_env_path(
                 "BROWSER_DIAGNOSTICS_PATH", defaults.browser_diagnostics
             ),
-            failure_evidence=_env_string(
-                "FAILURE_EVIDENCE_PATH", defaults.failure_evidence
-            ),
-            action_snapshots=_env_string(
-                "SNAPSHOT_PATH", defaults.action_snapshots
-            ),
+            action_snapshots=_env_path("SNAPSHOT_PATH", defaults.action_snapshots),
         )
 
 
@@ -135,7 +163,6 @@ class ArtifactPaths:
     testcase_logs: Path
     performance_logs: Path
     browser_diagnostics: Path
-    failure_evidence: Path
     action_snapshots: Path
 
     @staticmethod
@@ -144,9 +171,7 @@ class ArtifactPaths:
         return path if path.is_absolute() else rootpath / path
 
     @classmethod
-    def from_config(
-        cls, rootpath: Path, config: ArtifactConfig
-    ) -> "ArtifactPaths":
+    def from_config(cls, rootpath: Path, config: ArtifactConfig) -> "ArtifactPaths":
         rootpath = Path(rootpath)
         return cls(
             root=cls._resolve(rootpath, config.root),
@@ -154,7 +179,6 @@ class ArtifactPaths:
             testcase_logs=cls._resolve(rootpath, config.testcase_logs),
             performance_logs=cls._resolve(rootpath, config.performance_logs),
             browser_diagnostics=cls._resolve(rootpath, config.browser_diagnostics),
-            failure_evidence=cls._resolve(rootpath, config.failure_evidence),
             action_snapshots=cls._resolve(rootpath, config.action_snapshots),
         )
 
@@ -190,19 +214,23 @@ class DiagnosticsConfig:
 
 
 @dataclass(frozen=True)
-class ActionSnapshotConfig:
-    """Before/after evidence capture for browser actions."""
+class SnapshotConfig:
+    """Unified browser evidence policy."""
 
-    enabled: bool = False
-    capture_html: bool = True
+    action_enabled: bool = False
+    failure_enabled: bool = False
     full_page: bool = False
 
+    @property
+    def enabled(self) -> bool:
+        return self.action_enabled or self.failure_enabled
+
     @classmethod
-    def from_env(cls) -> "ActionSnapshotConfig":
+    def from_env(cls) -> "SnapshotConfig":
         defaults = cls()
         return cls(
-            enabled=_env_bool("CAPTURE_ACTION_SNAPSHOTS", defaults.enabled),
-            capture_html=_env_bool("ACTION_SNAPSHOT_HTML", defaults.capture_html),
+            action_enabled=_env_bool("CAPTURE_ACTION_SNAPSHOTS", defaults.action_enabled),
+            failure_enabled=_env_bool("CAPTURE_FAILURE_SNAPSHOTS", defaults.failure_enabled),
             full_page=_env_bool("ACTION_SNAPSHOT_FULL_PAGE", defaults.full_page),
         )
 
@@ -227,15 +255,11 @@ class PerformanceConfig:
         defaults = cls()
         return cls(
             enabled=_env_bool("PERF_MONITOR_ENABLED", defaults.enabled),
-            actions_enabled=_env_bool(
-                "PERF_MONITOR_ACTIONS", defaults.actions_enabled
-            ),
+            actions_enabled=_env_bool("PERF_MONITOR_ACTIONS", defaults.actions_enabled),
             framework_enabled=_env_bool(
                 "PERF_MONITOR_FRAMEWORK", defaults.framework_enabled
             ),
-            console_enabled=_env_bool(
-                "PERF_MONITOR_CONSOLE", defaults.console_enabled
-            ),
+            console_enabled=_env_bool("PERF_MONITOR_CONSOLE", defaults.console_enabled),
             sample_interval=max(
                 0.1,
                 _env_float("PERF_MONITOR_INTERVAL", defaults.sample_interval),
@@ -246,9 +270,7 @@ class PerformanceConfig:
             threshold_ms=max(
                 0.0, _env_float("PERF_MONITOR_THRESHOLD_MS", defaults.threshold_ms)
             ),
-            slow_ms=max(
-                0.0, _env_float("PERF_MONITOR_SLOW_MS", defaults.slow_ms)
-            ),
+            slow_ms=max(0.0, _env_float("PERF_MONITOR_SLOW_MS", defaults.slow_ms)),
             summary_limit=max(
                 1, _env_int("PERF_MONITOR_SUMMARY_LIMIT", defaults.summary_limit)
             ),
@@ -266,9 +288,7 @@ class TimeoutConfig:
     def from_env(cls) -> "TimeoutConfig":
         defaults = cls()
         return cls(
-            wait_time_seconds=max(
-                1, _env_int("WAIT_TIME", defaults.wait_time_seconds)
-            )
+            wait_time_seconds=max(1, _env_int("WAIT_TIME", defaults.wait_time_seconds))
         )
 
 
@@ -280,7 +300,7 @@ class RuntimeConfig:
     artifacts: ArtifactConfig
     diagnostics: DiagnosticsConfig
     performance: PerformanceConfig
-    action_snapshots: ActionSnapshotConfig
+    snapshots: SnapshotConfig
     timeouts: TimeoutConfig
 
     @classmethod
@@ -290,7 +310,7 @@ class RuntimeConfig:
             artifacts=ArtifactConfig(),
             diagnostics=DiagnosticsConfig(),
             performance=PerformanceConfig(),
-            action_snapshots=ActionSnapshotConfig(),
+            snapshots=SnapshotConfig(),
             timeouts=TimeoutConfig(),
         )
 
@@ -301,7 +321,7 @@ class RuntimeConfig:
             artifacts=ArtifactConfig.from_env(),
             diagnostics=DiagnosticsConfig.from_env(),
             performance=PerformanceConfig.from_env(),
-            action_snapshots=ActionSnapshotConfig.from_env(),
+            snapshots=SnapshotConfig.from_env(),
             timeouts=TimeoutConfig.from_env(),
         )
 

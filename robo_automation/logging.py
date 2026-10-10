@@ -114,11 +114,15 @@ class LogManager:
             if cli_level in LogManager.VALID_LOG_LEVELS:
                 config.option.log_cli_level = cli_level
             else:
-                logger.warning("Ignoring invalid configured CLI log level '%s'.", cli_level)
+                logger.warning(
+                    "Ignoring invalid configured CLI log level '%s'.", cli_level
+                )
 
         cli_format = logging_config.cli_format
         if cli_format:
-            config.option.log_cli_format = LogManager._with_correlation_fields(cli_format)
+            config.option.log_cli_format = LogManager._with_correlation_fields(
+                cli_format
+            )
             config.option.log_format = LogManager._with_correlation_fields(
                 str(getattr(config.option, "log_format", "") or cli_format)
             )

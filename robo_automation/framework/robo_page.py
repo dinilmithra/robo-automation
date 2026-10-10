@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping, Pattern
 from playwright.sync_api import Error as PlaywrightError, Locator, Page
 
 from robo_automation.errors import RoboNavigationError
+from robo_automation.snapshot_evidence import ensure_snapshot_service
 
 from robo_automation.framework.robo_locator import RoboLocator
 
@@ -19,25 +20,46 @@ class RoboPage:
     def __init__(self, page: Page) -> None:
         if not isinstance(page, Page):
             raise TypeError("RoboPage requires a Playwright Page.")
+        # Snapshot activation must not depend solely on pytest fixture ordering.
+        # This process-local guard is idempotent and is especially important for
+        # xdist workers, where each worker owns its own Playwright runtime.
+        ensure_snapshot_service()
         self._page = page
 
     @classmethod
-    def get(cls, page: Page) -> "RoboPage":
-        """Wrap a Playwright ``Page`` in a new ``RoboPage``."""
+    def get(cls, page: Page | "RoboPage") -> "RoboPage":
+        """Wrap a Playwright ``Page`` without hiding its native API."""
+        if isinstance(page, cls):
+            return page
+        if isinstance(page, RoboPage):
+            page = page._page
         return cls(page)
 
-    def specialize(self, page_type: type["RoboPage"]) -> "RoboPage":
-        """Return ``page_type`` around the same owned Playwright page.
+    def __getattr__(self, name: str) -> Any:
+        """Delegate unknown attributes to the wrapped Playwright page.
 
-        This is the controlled extension point used by higher-level automation
-        libraries (for example ``robo-appian``) to specialize a generic page
-        without taking ownership of the underlying Playwright page lifecycle.
+        RoboPage adds framework behavior; it does not intentionally hide any
+        standard Playwright Page attribute or method.
         """
-        if not issubclass(page_type, RoboPage):
-            raise TypeError("page_type must derive from RoboPage.")
+        return getattr(self._page, name)
+
+    def __dir__(self) -> list[str]:
+        """Include Playwright Page members in runtime introspection."""
+        return sorted(set(super().__dir__()) | set(dir(self._page)))
+
+    def specialize(self, page_type: type[Any]) -> Any:
+        """Wrap this page with a higher-level page type.
+
+        RoboPage subclasses continue to work, while composition-based wrappers
+        such as ``AppianPage`` can expose ``get(RoboPage)`` without requiring
+        robo-automation to import the higher-level package.
+        """
         if isinstance(self, page_type):
             return self
-        return page_type.get(self._page)
+        get = getattr(page_type, "get", None)
+        if not callable(get):
+            raise TypeError("page_type must provide a callable get() factory.")
+        return get(self)
 
     @property
     def url(self) -> str:
@@ -186,10 +208,14 @@ class RoboPage:
 
 
 def is_framework_page(value: object) -> bool:
-    """Return whether ``value`` is a robo-automation page wrapper.
+    """Return whether ``value`` is or wraps a robo-automation page.
 
-    Consumers can use this capability check without importing the concrete page
-    wrapper class, which keeps higher-level projects decoupled from framework
-    implementation types.
+    Higher-level transparent wrappers can expose a ``robo_page`` property
+    without requiring robo-automation to import the higher-level package.
     """
-    return isinstance(value, RoboPage)
+    if isinstance(value, RoboPage):
+        return True
+    try:
+        return isinstance(getattr(value, "robo_page"), RoboPage)
+    except (AttributeError, TypeError):
+        return False

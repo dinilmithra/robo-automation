@@ -9,10 +9,10 @@ from .correlation import (
     reset_test_context,
 )
 from .logging import LogManager, LoggingService
-from .action_snapshots import ActionSnapshotMonitor
+from .snapshot_evidence import SnapshotService, SnapshotWriter, capture_failure_snapshot
 from .errors import RoboAutomationError, RoboNavigationError
 from .config import (
-    ActionSnapshotConfig,
+    SnapshotConfig,
     ArtifactConfig,
     ArtifactPaths,
     DiagnosticsConfig,
@@ -22,7 +22,14 @@ from .config import (
     TimeoutConfig,
 )
 from .performance import PytestPerformanceMonitor
-from .framework import BrowserSession, RoboBrowserContext, RoboPage, RoboLocator, Scope, is_framework_page
+from .framework import (
+    BrowserSession,
+    RoboBrowserContext,
+    RoboPage,
+    RoboLocator,
+    Scope,
+    is_framework_page,
+)
 
 __all__ = [
     "RoboAutomationError",
@@ -31,8 +38,10 @@ __all__ = [
     "LoggingService",
     "RuntimeConfig",
     "LoggingConfig",
-    "ActionSnapshotConfig",
-    "ActionSnapshotMonitor",
+    "SnapshotConfig",
+    "SnapshotService",
+    "SnapshotWriter",
+    "capture_failure_snapshot",
     "ArtifactConfig",
     "ArtifactPaths",
     "DiagnosticsConfig",
