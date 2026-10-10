@@ -58,6 +58,55 @@ def test_failure_only_capture_works_without_action_capture(tmp_path, monkeypatch
     assert json.loads(metadata[0].read_text())["capture_type"] == "failure"
 
 
+@pytest.mark.parametrize("source_closed", [False, True])
+def test_failure_capture_resolves_open_page_in_same_context(tmp_path, monkeypatch, source_closed):
+    from types import SimpleNamespace
+    import robo_automation.snapshot_evidence as module
+
+    monkeypatch.setattr(module, "_raw_page", lambda value: value)
+    source = FakePage()
+    source.is_closed = lambda: source_closed
+    older_page = FakePage()
+    destination = FakePage()
+    destination.url = "https://example.test/user-hub"
+    closed_page = FakePage()
+    closed_page.is_closed = lambda: True
+    source.context = SimpleNamespace(pages=[older_page, destination, closed_page])
+    service = SnapshotService(SnapshotConfig(failure_enabled=True), paths(tmp_path), worker_id="gw1")
+
+    assert service.capture_failure(source, nodeid="test_popup", phase="call", process_id="popup")
+
+    captured = destination if source_closed else source
+    assert len(captured.shots) == 1
+    assert not older_page.shots
+    assert not closed_page.shots
+    assert not (source if source_closed else destination).shots
+    assert len(list((service.writer.html_root / "popup").glob("*.html"))) == 1
+    metadata = list((service.writer.metadata_root / "popup").glob("*.json"))
+    assert len(metadata) == 1
+    assert json.loads(metadata[0].read_text())["url"] == captured.url
+
+
+@pytest.mark.parametrize("context_available", [False, True])
+def test_failure_capture_without_open_context_page_saves_metadata(tmp_path, monkeypatch, context_available):
+    from types import SimpleNamespace
+    import robo_automation.snapshot_evidence as module
+
+    monkeypatch.setattr(module, "_raw_page", lambda value: value)
+    source = FakePage()
+    source.is_closed = lambda: True
+    if context_available:
+        source.context = SimpleNamespace(pages=[])
+    service = SnapshotService(SnapshotConfig(failure_enabled=True), paths(tmp_path), worker_id="gw1")
+
+    assert service.capture_failure(source, nodeid="test_closed", phase="teardown", process_id="closed")
+
+    assert not source.shots
+    metadata = list((service.writer.metadata_root / "closed").glob("*.json"))
+    assert len(metadata) == 1
+    assert json.loads(metadata[0].read_text())["snapshot_reason"]
+
+
 def test_action_failure_deduplicates_matching_test_failure(tmp_path, monkeypatch):
     import robo_automation.snapshot_evidence as module
     monkeypatch.setattr(module, "_raw_page", lambda value: value)

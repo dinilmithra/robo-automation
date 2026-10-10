@@ -1,0 +1,11 @@
+{
+  "worker": "master",
+  "generated_at": 1791651622.1849012,
+  "timing_count": 0,
+  "slow_count": 0,
+  "threshold_ms": 500.0,
+  "slow_threshold_ms": 2000.0,
+  "summary_limit": 50,
+  "by_operation": [],
+  "slowest_operations": []
+}

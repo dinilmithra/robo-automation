@@ -10,6 +10,8 @@
 
 ::: robo_automation.config.DiagnosticsConfig
 
+::: robo_automation.config.SnapshotConfig
+
 ::: robo_automation.config.PerformanceConfig
 
 ::: robo_automation.config.TimeoutConfig

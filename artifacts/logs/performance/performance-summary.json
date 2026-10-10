@@ -1,0 +1,12 @@
+{
+  "generated_at": 1791651622.214421,
+  "workers": [
+    "master"
+  ],
+  "timing_count": 0,
+  "slow_count": 0,
+  "threshold_ms": 500.0,
+  "slow_threshold_ms": 2000.0,
+  "by_operation": [],
+  "slowest_operations": []
+}

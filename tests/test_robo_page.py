@@ -77,3 +77,35 @@ def test_robo_page_does_not_expose_raw_playwright_page_property() -> None:
 
     with pytest.raises(AttributeError):
         _ = robo_page.playwright_page
+
+
+def test_wait_for_text_visible_uses_default_timeout_and_exact_match() -> None:
+    page = _mock_page()
+    text_locator = MagicMock(spec=Locator)
+    visible_locator = MagicMock(spec=Locator)
+    first_locator = MagicMock(spec=Locator)
+    page.get_by_text.return_value = text_locator
+    text_locator.filter.return_value = visible_locator
+    visible_locator.first = first_locator
+
+    result = RoboPage.get(page).wait_for_text_visible("Ready")
+
+    assert result is first_locator
+    page.get_by_text.assert_called_once_with("Ready", exact=True)
+    text_locator.filter.assert_called_once_with(visible=True)
+    first_locator.wait_for.assert_called_once_with(state="visible")
+
+
+def test_wait_for_text_visible_converts_timeout_seconds_to_milliseconds() -> None:
+    page = _mock_page()
+    text_locator = MagicMock(spec=Locator)
+    visible_locator = MagicMock(spec=Locator)
+    first_locator = MagicMock(spec=Locator)
+    page.get_by_text.return_value = text_locator
+    text_locator.filter.return_value = visible_locator
+    visible_locator.first = first_locator
+
+    RoboPage.get(page).wait_for_text_visible("Ready", timeout=8, exact=False)
+
+    page.get_by_text.assert_called_once_with("Ready", exact=False)
+    first_locator.wait_for.assert_called_once_with(state="visible", timeout=8000)

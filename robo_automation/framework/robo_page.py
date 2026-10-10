@@ -154,6 +154,31 @@ class RoboPage:
         """Create a text locator through the controlled page interface."""
         return self._page.get_by_text(text, **kwargs)
 
+    def wait_for_text_visible(
+        self,
+        text: str | Pattern[str],
+        *,
+        timeout: float | None = None,
+        exact: bool = True,
+    ) -> Locator:
+        """Wait until matching text is visible and return its live locator.
+
+        Args:
+            text: Text or regular expression to wait for.
+            timeout: Maximum wait in seconds. When omitted, the configured
+                browser/default wait timeout is used.
+            exact: Whether string text must match exactly. Defaults to ``True``.
+
+        Returns:
+            The first visible locator matching ``text``.
+        """
+        locator = self._page.get_by_text(text, exact=exact).filter(visible=True).first
+        wait_options: dict[str, Any] = {"state": "visible"}
+        if timeout is not None:
+            wait_options["timeout"] = timeout * 1000
+        locator.wait_for(**wait_options)
+        return locator
+
     def get_by_title(self, text: str | Pattern[str], **kwargs: Any) -> Locator:
         """Create a title locator through the controlled page interface."""
         return self._page.get_by_title(text, **kwargs)

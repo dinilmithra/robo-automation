@@ -238,9 +238,27 @@ class SnapshotService:
             "capture_type": "failure", "phase": phase, "status": "failed",
             "nodeid": nodeid, "details": details, **correlation, "process_id": pid,
         }
-        if _raw_page(page) is None:
+        raw = _raw_page(page)
+        if raw is not None:
+            try:
+                if raw.is_closed():
+                    raw = next(
+                        (candidate for candidate in reversed(raw.context.pages)
+                         if not candidate.is_closed()),
+                        None,
+                    )
+                    if raw is None:
+                        metadata["snapshot_reason"] = "No open browser page remains in the failure context."
+                    else:
+                        logger.info("Failure snapshot using an open context page: %s", raw.url)
+            except Exception as exc:
+                raw = None
+                metadata["snapshot_reason"] = f"Failure browser page could not be resolved: {exc}"
+            if raw is None:
+                logger.warning("%s Saving failure metadata only.", metadata["snapshot_reason"])
+        if raw is None:
             return self.writer.capture_metadata(stem=stem, metadata=metadata)
-        return self.writer.capture(page, stem=stem, metadata=metadata)
+        return self.writer.capture(raw, stem=stem, metadata=metadata)
 
 
 _service_lock = threading.Lock()

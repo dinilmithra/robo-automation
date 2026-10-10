@@ -8,7 +8,10 @@
 CAPTURE_ACTION_SNAPSHOTS=N
 CAPTURE_FAILURE_SNAPSHOTS=Y
 SNAPSHOT_PATH=${EVIDENCE_PATH}/actions
+ACTION_SNAPSHOT_FULL_PAGE=N
 ```
+
+`ACTION_SNAPSHOT_FULL_PAGE=Y` requests full-page screenshots; the default `N` captures the normal viewport.
 
 `CAPTURE_ACTION_SNAPSHOTS=Y` captures a `before` and `after` evidence set around every instrumented Playwright action. `CAPTURE_FAILURE_SNAPSHOTS=Y` guarantees failure evidence for failed pytest/setup/teardown flows when that failure is not already represented by a failed action snapshot. Either flag can operate independently.
 
