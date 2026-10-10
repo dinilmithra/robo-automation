@@ -33,6 +33,6 @@ Configuration follows this precedence:
 3. robo-automation library default.
 
 `robo-appian` remains responsible for Appian component semantics and may emit
-Appian-specific messages. CORE remains responsible for business/workflow messages
-and CORE-specific reporting. Neither layer owns generic Python/pytest logging
+Appian-specific messages. The consuming application remains responsible for business/workflow messages
+and application-specific reporting. Neither layer owns generic Python/pytest logging
 infrastructure.

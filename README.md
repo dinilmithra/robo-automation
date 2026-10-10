@@ -14,7 +14,7 @@ Most application test developers do not need to call its internal services direc
 - performance monitoring;
 - reusable `RoboPage` and `RoboLocator` wrappers.
 
-It intentionally contains no Appian or CORE business logic.
+It intentionally contains no application-specific business logic.
 
 ## Basic pytest use
 
