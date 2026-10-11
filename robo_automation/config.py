@@ -41,8 +41,7 @@ def _expand_env_references(value: str, *, source: str, max_depth: int = 20) -> s
         missing = sorted({name for name in names if os.getenv(name) is None})
         if missing:
             raise ValueError(
-                f"Unresolved environment variable(s) in {source}: "
-                + ", ".join(missing)
+                f"Unresolved environment variable(s) in {source}: " + ", ".join(missing)
             )
         empty = sorted({name for name in names if not os.environ[name].strip()})
         if empty:
@@ -51,9 +50,13 @@ def _expand_env_references(value: str, *, source: str, max_depth: int = 20) -> s
             )
         result = _ENV_REFERENCE.sub(lambda match: os.environ[match.group(1)], result)
         if result in seen:
-            raise ValueError(f"Cyclic environment variable reference in {source}: {value}")
+            raise ValueError(
+                f"Cyclic environment variable reference in {source}: {value}"
+            )
         seen.add(result)
-    raise ValueError(f"Environment expansion exceeded {max_depth} levels in {source}: {value}")
+    raise ValueError(
+        f"Environment expansion exceeded {max_depth} levels in {source}: {value}"
+    )
 
 
 def _env_path(name: str, default: str = "") -> str:
@@ -144,9 +147,7 @@ class ArtifactConfig:
                 "PYTEST_PARALLEL_LOG_PATH", defaults.execution_logs
             ),
             testcase_logs=_env_path("TESTCASE_LOG_PATH", defaults.testcase_logs),
-            performance_logs=_env_path(
-                "PERF_MONITOR_PATH", defaults.performance_logs
-            ),
+            performance_logs=_env_path("PERF_MONITOR_PATH", defaults.performance_logs),
             browser_diagnostics=_env_path(
                 "BROWSER_DIAGNOSTICS_PATH", defaults.browser_diagnostics
             ),
@@ -229,8 +230,12 @@ class SnapshotConfig:
     def from_env(cls) -> "SnapshotConfig":
         defaults = cls()
         return cls(
-            action_enabled=_env_bool("CAPTURE_ACTION_SNAPSHOTS", defaults.action_enabled),
-            failure_enabled=_env_bool("CAPTURE_FAILURE_SNAPSHOTS", defaults.failure_enabled),
+            action_enabled=_env_bool(
+                "CAPTURE_ACTION_SNAPSHOTS", defaults.action_enabled
+            ),
+            failure_enabled=_env_bool(
+                "CAPTURE_FAILURE_SNAPSHOTS", defaults.failure_enabled
+            ),
             full_page=_env_bool("ACTION_SNAPSHOT_FULL_PAGE", defaults.full_page),
         )
 

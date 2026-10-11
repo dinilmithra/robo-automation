@@ -1,4 +1,5 @@
 """Unified screenshot, DOM, and metadata evidence for browser actions and failures."""
+
 from __future__ import annotations
 
 import json
@@ -36,7 +37,9 @@ def _raw_page(value: Any) -> Optional[Page]:
                 return current.page
             except Exception:
                 return None
-        current = getattr(current, "_page", None) or getattr(current, "_robo_page", None)
+        current = getattr(current, "_page", None) or getattr(
+            current, "_robo_page", None
+        )
     return None
 
 
@@ -76,7 +79,9 @@ class SnapshotWriter:
             )
             return True
         except Exception as exc:
-            logger.warning("Snapshot metadata capture failed (diagnostic only): %s", exc)
+            logger.warning(
+                "Snapshot metadata capture failed (diagnostic only): %s", exc
+            )
             return False
 
     def capture(self, page: Any, *, stem: str, metadata: dict[str, Any]) -> bool:
@@ -98,27 +103,67 @@ class SnapshotWriter:
             html_dir.mkdir(parents=True, exist_ok=True)
             metadata_dir.mkdir(parents=True, exist_ok=True)
             safe_stem = _token(stem, 180)
-            raw.screenshot(path=str(screenshot_dir / f"{safe_stem}.png"), full_page=self.full_page)
+            raw.screenshot(
+                path=str(screenshot_dir / f"{safe_stem}.png"), full_page=self.full_page
+            )
             (html_dir / f"{safe_stem}.html").write_text(raw.content(), encoding="utf-8")
-            payload = {"timestamp": time.time(), "worker": self.worker_id, "url": raw.url, **metadata}
+            payload = {
+                "timestamp": time.time(),
+                "worker": self.worker_id,
+                "url": raw.url,
+                **metadata,
+            }
             (metadata_dir / f"{safe_stem}.json").write_text(
                 json.dumps(payload, indent=2, default=str), encoding="utf-8"
             )
             return True
         except Exception as exc:
-            logger.warning("Snapshot evidence capture failed (diagnostic only): %s", exc)
+            logger.warning(
+                "Snapshot evidence capture failed (diagnostic only): %s", exc
+            )
             return False
 
 
 class SnapshotService:
     """Independent action and failure capture policies sharing one writer."""
 
-    PAGE_ACTIONS = ("goto", "reload", "go_back", "go_forward", "set_content", "wait_for_load_state", "wait_for_timeout")
-    LOCATOR_ACTIONS = ("click", "dblclick", "fill", "clear", "press", "press_sequentially", "type", "check", "uncheck", "set_checked", "select_option", "hover", "focus", "blur", "set_input_files", "drag_to", "scroll_into_view_if_needed", "wait_for")
+    PAGE_ACTIONS = (
+        "goto",
+        "reload",
+        "go_back",
+        "go_forward",
+        "set_content",
+        "wait_for_load_state",
+        "wait_for_timeout",
+    )
+    LOCATOR_ACTIONS = (
+        "click",
+        "dblclick",
+        "fill",
+        "clear",
+        "press",
+        "press_sequentially",
+        "type",
+        "check",
+        "uncheck",
+        "set_checked",
+        "select_option",
+        "hover",
+        "focus",
+        "blur",
+        "set_input_files",
+        "drag_to",
+        "scroll_into_view_if_needed",
+        "wait_for",
+    )
 
-    def __init__(self, config: SnapshotConfig, paths: ArtifactPaths, *, worker_id: str) -> None:
+    def __init__(
+        self, config: SnapshotConfig, paths: ArtifactPaths, *, worker_id: str
+    ) -> None:
         self.config = config
-        self.writer = SnapshotWriter(paths.action_snapshots, worker_id, full_page=config.full_page)
+        self.writer = SnapshotWriter(
+            paths.action_snapshots, worker_id, full_page=config.full_page
+        )
         self._originals: dict[tuple[type, str], Callable[..., Any]] = {}
         self._sequence = 0
         self._lock = threading.Lock()
@@ -183,29 +228,59 @@ class SnapshotService:
             process_id = str(correlation.get("process_id") or "session")
             target = service._target(kind, instance, args)
             base = f"{sequence:05d}__{_token(name,40)}"
-            service.writer.capture(page, stem=f"{base}__before__{_token(process_id,64)}", metadata={
-                "capture_type": "action", "phase": "before", "status": "started",
-                "sequence": sequence, "action": name, "target": target, **correlation,
-            })
+            service.writer.capture(
+                page,
+                stem=f"{base}__before__{_token(process_id,64)}",
+                metadata={
+                    "capture_type": "action",
+                    "phase": "before",
+                    "status": "started",
+                    "sequence": sequence,
+                    "action": name,
+                    "target": target,
+                    **correlation,
+                },
+            )
             started = time.perf_counter()
             try:
                 result = original(instance, *args, **kwargs)
             except Exception as exc:
                 duration = (time.perf_counter() - started) * 1000.0
-                service.writer.capture(page, stem=f"{base}__after__{_token(process_id,64)}", metadata={
-                    "capture_type": "action", "phase": "after", "status": "failed",
-                    "sequence": sequence, "action": name, "target": target,
-                    "duration_ms": round(duration, 3), "error_type": type(exc).__name__,
-                    "error": str(exc), **correlation,
-                })
-                service._coverage[process_id] = FailureCoverage(process_id, type(exc).__name__, str(exc))
+                service.writer.capture(
+                    page,
+                    stem=f"{base}__after__{_token(process_id,64)}",
+                    metadata={
+                        "capture_type": "action",
+                        "phase": "after",
+                        "status": "failed",
+                        "sequence": sequence,
+                        "action": name,
+                        "target": target,
+                        "duration_ms": round(duration, 3),
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                        **correlation,
+                    },
+                )
+                service._coverage[process_id] = FailureCoverage(
+                    process_id, type(exc).__name__, str(exc)
+                )
                 raise
             duration = (time.perf_counter() - started) * 1000.0
-            service.writer.capture(page, stem=f"{base}__after__{_token(process_id,64)}", metadata={
-                "capture_type": "action", "phase": "after", "status": "passed",
-                "sequence": sequence, "action": name, "target": target,
-                "duration_ms": round(duration, 3), **correlation,
-            })
+            service.writer.capture(
+                page,
+                stem=f"{base}__after__{_token(process_id,64)}",
+                metadata={
+                    "capture_type": "action",
+                    "phase": "after",
+                    "status": "passed",
+                    "sequence": sequence,
+                    "action": name,
+                    "target": target,
+                    "duration_ms": round(duration, 3),
+                    **correlation,
+                },
+            )
             return result
 
         wrapped.__name__ = getattr(original, "__name__", name)
@@ -220,7 +295,15 @@ class SnapshotService:
             return str(getattr(instance, "url", "page"))[:500]
         return str(getattr(instance, "_selector", None) or instance)[:1000]
 
-    def capture_failure(self, page: Any, *, nodeid: str, phase: str, details: str = "", process_id: str = "") -> bool:
+    def capture_failure(
+        self,
+        page: Any,
+        *,
+        nodeid: str,
+        phase: str,
+        details: str = "",
+        process_id: str = "",
+    ) -> bool:
         if not self.config.failure_enabled:
             return False
         correlation = current_correlation()
@@ -228,34 +311,57 @@ class SnapshotService:
         covered = self._coverage.get(pid)
         if covered and (
             (covered.error_text and covered.error_text in details)
-            or (not covered.error_text and covered.error_type and covered.error_type in details)
+            or (
+                not covered.error_text
+                and covered.error_type
+                and covered.error_type in details
+            )
         ):
-            logger.info("Failure snapshot deduplicated for %s; failed action already captured", nodeid)
+            logger.info(
+                "Failure snapshot deduplicated for %s; failed action already captured",
+                nodeid,
+            )
             self._coverage.pop(pid, None)
             return False
         stem = f"failure__{_token(nodeid,100)}__{_token(phase,24)}__{_token(pid,64)}"
         metadata = {
-            "capture_type": "failure", "phase": phase, "status": "failed",
-            "nodeid": nodeid, "details": details, **correlation, "process_id": pid,
+            "capture_type": "failure",
+            "phase": phase,
+            "status": "failed",
+            "nodeid": nodeid,
+            "details": details,
+            **correlation,
+            "process_id": pid,
         }
         raw = _raw_page(page)
         if raw is not None:
             try:
                 if raw.is_closed():
                     raw = next(
-                        (candidate for candidate in reversed(raw.context.pages)
-                         if not candidate.is_closed()),
+                        (
+                            candidate
+                            for candidate in reversed(raw.context.pages)
+                            if not candidate.is_closed()
+                        ),
                         None,
                     )
                     if raw is None:
-                        metadata["snapshot_reason"] = "No open browser page remains in the failure context."
+                        metadata["snapshot_reason"] = (
+                            "No open browser page remains in the failure context."
+                        )
                     else:
-                        logger.info("Failure snapshot using an open context page: %s", raw.url)
+                        logger.info(
+                            "Failure snapshot using an open context page: %s", raw.url
+                        )
             except Exception as exc:
                 raw = None
-                metadata["snapshot_reason"] = f"Failure browser page could not be resolved: {exc}"
+                metadata["snapshot_reason"] = (
+                    f"Failure browser page could not be resolved: {exc}"
+                )
             if raw is None:
-                logger.warning("%s Saving failure metadata only.", metadata["snapshot_reason"])
+                logger.warning(
+                    "%s Saving failure metadata only.", metadata["snapshot_reason"]
+                )
         if raw is None:
             return self.writer.capture_metadata(stem=stem, metadata=metadata)
         return self.writer.capture(raw, stem=stem, metadata=metadata)
@@ -265,21 +371,34 @@ _service_lock = threading.Lock()
 _service: Optional[SnapshotService] = None
 
 
-def ensure_snapshot_service(*, config: SnapshotConfig | None = None, artifact_paths: ArtifactPaths | None = None, rootpath: Path | None = None, worker_id: str | None = None) -> Optional[SnapshotService]:
+def ensure_snapshot_service(
+    *,
+    config: SnapshotConfig | None = None,
+    artifact_paths: ArtifactPaths | None = None,
+    rootpath: Path | None = None,
+    worker_id: str | None = None,
+) -> Optional[SnapshotService]:
     global _service
     with _service_lock:
         if _service is not None:
             return _service
         if config is None or artifact_paths is None:
             from .config import RuntimeConfig
+
             runtime = RuntimeConfig.from_env()
             config = runtime.snapshots
             if not config.enabled:
                 return None
-            artifact_paths = ArtifactPaths.from_config(rootpath or Path.cwd(), runtime.artifacts)
+            artifact_paths = ArtifactPaths.from_config(
+                rootpath or Path.cwd(), runtime.artifacts
+            )
         elif not config.enabled:
             return None
-        _service = SnapshotService(config, artifact_paths, worker_id=worker_id or os.getenv("PYTEST_XDIST_WORKER", "master"))
+        _service = SnapshotService(
+            config,
+            artifact_paths,
+            worker_id=worker_id or os.getenv("PYTEST_XDIST_WORKER", "master"),
+        )
         _service.start()
         return _service
 
@@ -293,8 +412,12 @@ def stop_snapshot_service() -> None:
         service.stop()
 
 
-def capture_failure_snapshot(page: Any, *, nodeid: str, phase: str, details: str = "", process_id: str = "") -> bool:
+def capture_failure_snapshot(
+    page: Any, *, nodeid: str, phase: str, details: str = "", process_id: str = ""
+) -> bool:
     service = ensure_snapshot_service()
     if service is None:
         return False
-    return service.capture_failure(page, nodeid=nodeid, phase=phase, details=details, process_id=process_id)
+    return service.capture_failure(
+        page, nodeid=nodeid, phase=phase, details=details, process_id=process_id
+    )

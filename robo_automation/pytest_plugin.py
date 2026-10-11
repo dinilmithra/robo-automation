@@ -32,7 +32,11 @@ from .browser import (
     playwright_lifecycle,
 )
 from .performance import PytestPerformanceMonitor
-from .snapshot_evidence import SnapshotService, ensure_snapshot_service, stop_snapshot_service
+from .snapshot_evidence import (
+    SnapshotService,
+    ensure_snapshot_service,
+    stop_snapshot_service,
+)
 from .framework import RoboBrowserContext, RoboPage
 
 logger = logging.getLogger(__name__)
