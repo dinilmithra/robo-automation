@@ -1,54 +1,47 @@
-# Snapshot Evidence
+# Action and Failure Snapshots
 
-`robo-automation` owns one browser-evidence subsystem for both action snapshots and failure snapshots. The implementation uses one `SnapshotService` and one `SnapshotWriter`; consuming applications do not implement a second screenshot pipeline.
+Snapshots provide visual evidence of what happened while an automation test was running. They are useful when reviewing test results or investigating a failure.
 
-## Configuration
+Configure snapshot capture using:
 
-```ini
+```text
 CAPTURE_ACTION_SNAPSHOTS=N
 CAPTURE_FAILURE_SNAPSHOTS=Y
-SNAPSHOT_PATH=${EVIDENCE_PATH}/actions
-ACTION_SNAPSHOT_FULL_PAGE=N
+SNAPSHOT_FULL_PAGE=N
+SNAPSHOT_PATH=${ARTIFACTS_ROOT}/snapshots
 ```
 
-`ACTION_SNAPSHOT_FULL_PAGE=Y` requests full-page screenshots; the default `N` captures the normal viewport.
+| Setting | Purpose |
+| --- | --- |
+| `CAPTURE_ACTION_SNAPSHOTS` | Capture screenshots before and after supported automation actions. |
+| `CAPTURE_FAILURE_SNAPSHOTS` | Capture screenshot evidence when a test fails. |
+| `SNAPSHOT_FULL_PAGE` | Capture the full page instead of only the visible area. |
+| `SNAPSHOT_PATH` | Folder where snapshot evidence is stored. The standard project setting is `${ARTIFACTS_ROOT}/snapshots`. |
 
-`CAPTURE_ACTION_SNAPSHOTS=Y` captures a `before` and `after` evidence set around every instrumented Playwright action. `CAPTURE_FAILURE_SNAPSHOTS=Y` guarantees failure evidence for failed pytest/setup/teardown flows when that failure is not already represented by a failed action snapshot. Either flag can operate independently.
+## Recommended configuration
 
-## Flag behavior
+For normal automation execution, failure snapshots provide useful evidence without capturing screenshots for every action:
 
-| Action | Failure | Behavior |
-| --- | --- | --- |
-| N | N | No snapshot evidence |
-| N | Y | Failure evidence only |
-| Y | N | Before/after evidence for browser actions, including failed actions |
-| Y | Y | Action evidence plus failure fallback; matching failures are deduplicated |
+```text
+CAPTURE_ACTION_SNAPSHOTS=N
+CAPTURE_FAILURE_SNAPSHOTS=Y
+SNAPSHOT_FULL_PAGE=N
+SNAPSHOT_PATH=${ARTIFACTS_ROOT}/snapshots
+```
 
-A failed action always uses the normal `after` phase with `status=failed`. There is no `after_error` phase.
+Enable action snapshots when additional evidence is useful while developing or troubleshooting a test:
 
-## Storage
+```text
+CAPTURE_ACTION_SNAPSHOTS=Y
+```
 
-All snapshot evidence uses `SNAPSHOT_PATH` and is separated by artifact type:
+## Snapshot files
+
+Snapshot evidence is stored under `SNAPSHOT_PATH` and organized by evidence type:
 
 ```text
 ${SNAPSHOT_PATH}/
-├── screenshots/<process>/...png
-├── html/<process>/...html
-└── metadata/<process>/...json
+├── screenshots/
+├── html/
+└── metadata/
 ```
-
-The matching stem correlates the screenshot, live DOM, and metadata. Unique process/test identifiers separate parallel captures without worker directories. The worker name remains in JSON metadata for diagnostics.
-
-## Action lifecycle
-
-Before metadata contains `capture_type=action`, `phase=before`, and `status=started`. A successful after record contains `phase=after`, `status=passed`, and `duration_ms`. A failed after record contains `phase=after`, `status=failed`, `duration_ms`, `error_type`, and `error`.
-
-Snapshot collection is diagnostic-only. Failure to write a screenshot, DOM, or metadata file is logged and never replaces the real automation exception.
-
-## Failure lifecycle and deduplication
-
-Failure capture is independent of action capture. When action capture is disabled, a failed test can still write PNG, HTML, and JSON evidence. When both flags are enabled, the service records failed-action coverage in process-local correlation state. If the pytest failure matches that action error, the failure policy reuses the action evidence and does not create a duplicate set. An unrelated later failure is not suppressed.
-
-## Runtime activation
-
-The pytest plugin starts the service before browser use. `RoboPage` also performs an idempotent process-local `ensure_snapshot_service()` call so xdist workers and nonstandard fixture paths cannot silently bypass evidence initialization. Both paths share the same singleton service and cannot double-patch Playwright.

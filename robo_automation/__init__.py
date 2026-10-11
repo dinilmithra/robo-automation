@@ -21,7 +21,7 @@ from .config import (
     RuntimeConfig,
     TimeoutConfig,
 )
-from .performance import PytestPerformanceMonitor
+from .performance import PerformanceMonitor
 from .framework import (
     BrowserSession,
     RoboBrowserContext,
@@ -47,7 +47,7 @@ __all__ = [
     "DiagnosticsConfig",
     "PerformanceConfig",
     "TimeoutConfig",
-    "PytestPerformanceMonitor",
+    "PerformanceMonitor",
     "BrowserSession",
     "RoboBrowserContext",
     "RoboPage",

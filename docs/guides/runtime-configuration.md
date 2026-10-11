@@ -60,20 +60,20 @@ TESTCASE_LOG_ENABLED=Y
 | Flag | Default | Usage |
 | --- | --- | --- |
 | `ARTIFACTS_ROOT` | `artifacts` | Root artifact directory. |
-| `SNAPSHOT_PATH` | `artifacts/evidence/actions` | Action/failure snapshot root. |
+| `SNAPSHOT_PATH` | `${ARTIFACTS_ROOT}/snapshots` | Folder where screenshots are saved. |
 | `CAPTURE_ACTION_SNAPSHOTS` | `N` | Capture before/after evidence for instrumented browser actions. |
 | `CAPTURE_FAILURE_SNAPSHOTS` | `N` | Capture failure evidence when the failure is not already represented by action evidence. |
-| `ACTION_SNAPSHOT_FULL_PAGE` | `N` | Use full-page screenshots for snapshot evidence. |
+| `SNAPSHOT_FULL_PAGE` | `N` | Capture the full page instead of only the visible area. |
 
 Paths support recursive `${VAR}` references. This makes a shared layout possible without hardcoding an absolute path:
 
 ```ini
 ARTIFACTS_ROOT=../artifacts
 EVIDENCE_PATH=${ARTIFACTS_ROOT}/evidence
-SNAPSHOT_PATH=${EVIDENCE_PATH}/actions
+SNAPSHOT_PATH=${ARTIFACTS_ROOT}/snapshots
 CAPTURE_ACTION_SNAPSHOTS=N
 CAPTURE_FAILURE_SNAPSHOTS=Y
-ACTION_SNAPSHOT_FULL_PAGE=N
+SNAPSHOT_FULL_PAGE=N
 ```
 
 Referenced variables must exist and be non-empty. Unresolved, empty, cyclic, or excessively recursive references raise a configuration error instead of silently producing an incorrect path.

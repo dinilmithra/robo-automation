@@ -1,3 +1,3 @@
 # performance
 
-::: robo_automation.performance.PytestPerformanceMonitor
+::: robo_automation.performance.PerformanceMonitor

@@ -21,7 +21,7 @@ from .config import ArtifactPaths, PerformanceConfig, RuntimeConfig
 logger = logging.getLogger(__name__)
 
 
-class PytestPerformanceMonitor:
+class PerformanceMonitor:
     """Collect unified pytest, Playwright, network, and resource timings.
 
     ``PERF_MONITOR_ENABLED`` is the master switch. ``PERF_MONITOR_ACTIONS``

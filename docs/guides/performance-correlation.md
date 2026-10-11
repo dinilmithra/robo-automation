@@ -26,4 +26,4 @@ Each worker writes correlated output without sharing browser/session state. Duri
 
 Correlation context is also used by logs and evidence so artifacts can be associated with the originating testcase, process/attempt, and worker.
 
-See [Runtime Configuration](runtime-configuration.md) for the complete flag table and the API pages for `PytestPerformanceMonitor` and correlation helpers.
+See [Runtime Configuration](runtime-configuration.md) for the complete flag table and the API pages for `PerformanceMonitor` and correlation helpers.

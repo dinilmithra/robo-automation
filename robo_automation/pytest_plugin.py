@@ -31,7 +31,7 @@ from .browser import (
     performance_monitor_lifecycle,
     playwright_lifecycle,
 )
-from .performance import PytestPerformanceMonitor
+from .performance import PerformanceMonitor
 from .snapshot_evidence import (
     SnapshotService,
     ensure_snapshot_service,
@@ -88,7 +88,7 @@ def pytest_configure(config: pytest.Config) -> None:
         artifact_paths = ArtifactPaths.from_config(
             config.rootpath, runtime_config.artifacts
         )
-        monitor = PytestPerformanceMonitor(
+        monitor = PerformanceMonitor(
             config,
             performance_config=runtime_config.performance,
             artifact_paths=artifact_paths,
@@ -116,7 +116,7 @@ def _finalize_controller_performance(config: pytest.Config) -> None:
         artifact_paths = ArtifactPaths.from_config(
             config.rootpath, runtime_config.artifacts
         )
-        PytestPerformanceMonitor.merge_worker_summaries(
+        PerformanceMonitor.merge_worker_summaries(
             artifact_paths.performance_logs,
             summary_limit=runtime_config.performance.summary_limit,
         )
@@ -233,7 +233,7 @@ def performance_monitor(
     request: pytest.FixtureRequest,
     robo_performance_config: PerformanceConfig,
     robo_artifact_paths: ArtifactPaths,
-) -> Iterator[Optional[PytestPerformanceMonitor]]:
+) -> Iterator[Optional[PerformanceMonitor]]:
     """Provide one generic performance monitor per pytest/xdist worker."""
     yield from performance_monitor_lifecycle(
         request, robo_performance_config, robo_artifact_paths
@@ -243,7 +243,7 @@ def performance_monitor(
 @pytest.fixture(scope="session", autouse=True)
 def snapshot_service(
     request: pytest.FixtureRequest,
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     robo_snapshot_config: SnapshotConfig,
     robo_artifact_paths: ArtifactPaths,
 ) -> Iterator[Optional[SnapshotService]]:
@@ -268,7 +268,7 @@ def snapshot_service(
 
 @pytest.fixture(scope="session")
 def robo_automation_playwright(
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
 ) -> Iterator[Playwright]:
     """Own the generic Playwright runtime for one pytest session."""
     yield from playwright_lifecycle(performance_monitor)
@@ -277,7 +277,7 @@ def robo_automation_playwright(
 @pytest.fixture(scope="session")
 def browser(
     robo_automation_playwright: Playwright,
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     snapshot_service: Optional[SnapshotService],
     request: pytest.FixtureRequest,
 ) -> Iterator[Browser]:
@@ -294,7 +294,7 @@ def browser(
 
 
 def _measure_framework(
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     action: str,
 ):
     """Return a timing context when performance monitoring is enabled."""
@@ -306,7 +306,7 @@ def _measure_framework(
 def _default_context_lifecycle(
     browser: Browser,
     context_options: dict[str, Any],
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     wait_time: Optional[int],
     context_page_handler: Optional[Callable[[RoboPage], None]],
 ) -> Iterator[RoboBrowserContext]:
@@ -340,7 +340,7 @@ def _default_context_lifecycle(
 
 def _default_page_lifecycle(
     context: RoboBrowserContext,
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
 ) -> Iterator[RoboPage]:
     """Create and close one generic ``RoboPage`` for the current test."""
     del performance_monitor
@@ -386,7 +386,7 @@ def context_page_handler() -> Optional[Callable[[RoboPage], None]]:
 def context(
     browser: Browser,
     context_options: dict[str, Any],
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     wait_time: Optional[int],
     context_page_handler: Optional[Callable[[RoboPage], None]],
 ) -> Iterator[RoboBrowserContext]:
@@ -399,7 +399,7 @@ def context(
 @pytest.fixture
 def robo_page(
     context: RoboBrowserContext,
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
 ) -> Iterator[RoboPage]:
     """Own the generic test-scoped ``RoboPage`` lifecycle."""
     yield from _default_page_lifecycle(context, performance_monitor)

@@ -135,7 +135,7 @@ class ArtifactConfig:
     testcase_logs: str = "artifacts/logs/testcases"
     performance_logs: str = "artifacts/logs/performance"
     browser_diagnostics: str = "artifacts/browser-actions"
-    action_snapshots: str = "artifacts/evidence/actions"
+    action_snapshots: str = "artifacts/snapshots"
 
     @classmethod
     def from_env(cls) -> "ArtifactConfig":
@@ -236,7 +236,7 @@ class SnapshotConfig:
             failure_enabled=_env_bool(
                 "CAPTURE_FAILURE_SNAPSHOTS", defaults.failure_enabled
             ),
-            full_page=_env_bool("ACTION_SNAPSHOT_FULL_PAGE", defaults.full_page),
+            full_page=_env_bool("SNAPSHOT_FULL_PAGE", defaults.full_page),
         )
 
 

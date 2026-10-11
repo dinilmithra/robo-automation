@@ -14,12 +14,12 @@ import pytest
 from playwright.sync_api import Browser, Playwright, sync_playwright
 
 from .config import AutomationConfig, ArtifactPaths, PerformanceConfig
-from .performance import PytestPerformanceMonitor
+from .performance import PerformanceMonitor
 
 logger = logging.getLogger(__name__)
 
 
-def _measure(monitor: Optional[PytestPerformanceMonitor], action: str, **metadata: Any):
+def _measure(monitor: Optional[PerformanceMonitor], action: str, **metadata: Any):
     if monitor is None:
         return nullcontext()
     return monitor.measure(action, metadata=metadata or None)
@@ -37,12 +37,12 @@ def performance_monitor_lifecycle(
     request: pytest.FixtureRequest,
     performance_config: PerformanceConfig,
     artifact_paths: ArtifactPaths,
-) -> Iterator[Optional[PytestPerformanceMonitor]]:
+) -> Iterator[Optional[PerformanceMonitor]]:
     """Start one performance monitor per pytest/xdist worker when enabled."""
     if not performance_config.enabled:
         yield None
         return
-    monitor = PytestPerformanceMonitor(
+    monitor = PerformanceMonitor(
         request.config,
         performance_config=performance_config,
         artifact_paths=artifact_paths,
@@ -57,7 +57,7 @@ def performance_monitor_lifecycle(
 
 
 def playwright_lifecycle(
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
 ) -> Iterator[Playwright]:
     """Start and stop Playwright for one pytest session."""
     manager = sync_playwright()
@@ -143,7 +143,7 @@ def _launch_browser_in_slot(
 
 def browser_lifecycle(
     playwright: Playwright,
-    performance_monitor: Optional[PytestPerformanceMonitor],
+    performance_monitor: Optional[PerformanceMonitor],
     request: pytest.FixtureRequest,
 ) -> Iterator[Browser]:
     """Create and close a configured session browser."""
