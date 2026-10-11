@@ -1,8 +1,8 @@
-# Core Concepts
+# Runtime Concepts
 
-`robo-automation` owns generic browser automation infrastructure. It does not know which business application is being tested.
+`robo-automation` owns generic browser automation infrastructure. For Appian business automation, `robo-appian` is the normal page-interaction API and uses this runtime underneath.
 
-## Resource model
+## Resource model (background)
 
 ```text
 Browser
@@ -14,7 +14,7 @@ RoboPage
 RoboLocator
 ```
 
-Higher-level libraries can specialize these wrappers without recreating browser lifecycle.
+Higher-level libraries such as `robo-appian` specialize these wrappers without recreating browser lifecycle. A normal business test does not need to instantiate or call these wrappers directly.
 
 ## Timeout rule
 

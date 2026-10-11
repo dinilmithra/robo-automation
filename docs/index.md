@@ -12,9 +12,9 @@ hide:
         <span>Shared Python Automation Infrastructure</span>
       </div>
       <h1>Build Browser<br>Automation.<br><em>Faster. Reliably.</em></h1>
-      <p>A reusable Python automation foundation for browser lifecycle, pytest fixtures, logging, diagnostics, configuration, performance monitoring, and parallel test execution.</p>
+      <p>The supporting runtime behind business automation: pytest fixtures, browser lifecycle, configuration, logging, diagnostics, and parallel execution. Appian automation authors normally use these capabilities through `robo-appian`.</p>
       <div class="ra-target-actions">
-        <a class="ra-target-btn primary" href="getting-started/installation/">🚀&nbsp; Get Started <span>→</span></a>
+        <a class="ra-target-btn primary" href="getting-started/for-automation-authors/">🚀&nbsp; For Automation Authors <span>→</span></a>
         <a class="ra-target-btn" href="api/">&lt;/&gt;&nbsp; API Reference <span>→</span></a>
       </div>
       <div class="ra-target-install"><span>pip</span><code>pip install robo-automation</code></div>
@@ -73,7 +73,7 @@ hide:
   <section class="ra-target-docs">
     <div class="ra-target-docs-head"><h2>▣ &nbsp; Documentation</h2><a href="getting-started/installation/">Explore all docs&nbsp; →</a></div>
     <div class="ra-target-doc-grid">
-      <a href="getting-started/installation/"><span>↓</span><div><strong>Installation</strong><small>Set up robo-automation.</small></div><b>→</b></a>
+      <a href="getting-started/for-automation-authors/"><span>▶</span><div><strong>For Automation Authors</strong><small>Learn what a business-test author needs from this runtime.</small></div><b>→</b></a>
       <a href="getting-started/concepts/"><span>⚙</span><div><strong>Core Concepts</strong><small>Understand the shared runtime.</small></div><b>→</b></a>
       <a href="getting-started/pytest-fixtures/"><span>▧</span><div><strong>Pytest Fixtures</strong><small>Use and override public fixtures.</small></div><b>→</b></a>
       <a href="api/"><span>&lt;/&gt;</span><div><strong>API Reference</strong><small>Browse robo-automation APIs.</small></div><b>→</b></a>
