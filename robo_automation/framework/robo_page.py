@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from typing import Any, Callable, Mapping, Pattern
 
 from playwright.sync_api import Error as PlaywrightError, Locator, Page
@@ -10,6 +12,26 @@ from robo_automation.errors import RoboNavigationError
 from robo_automation.snapshot_evidence import ensure_snapshot_service
 
 from robo_automation.framework.robo_locator import RoboLocator
+
+
+logger = logging.getLogger(__name__)
+
+_NAVIGATION_ATTEMPTS = 3
+_NAVIGATION_RECOVERY_TIMEOUT_MS = 3000
+_CHROME_ERROR_PREFIX = "chrome-error://"
+
+
+def _is_transient_chrome_navigation_error(message: str, current_url: str) -> bool:
+    """Return whether Chromium temporarily replaced a navigation with its error page."""
+    normalized = message.lower()
+    return (
+        current_url.startswith(_CHROME_ERROR_PREFIX)
+        or "chrome-error://chromewebdata/" in normalized
+        or (
+            "interrupted by another navigation" in normalized
+            and "chrome-error://" in normalized
+        )
+    )
 
 
 class RoboPage:
@@ -72,21 +94,104 @@ class RoboPage:
         return self._page.main_frame
 
     def goto(self, url: str, **kwargs: Any):
-        """Navigate to ``url`` and translate browser-engine failures."""
-        try:
-            return self._page.goto(url, **kwargs)
-        except PlaywrightError as exc:
-            message = str(exc)
-            code = (
-                "ROBO_NAVIGATION_ABORTED"
-                if "ERR_ABORTED" in message
-                else "ROBO_NAVIGATION_ERROR"
+        """Navigate to ``url`` with bounded recovery for Chromium's transient error page.
+
+        Chromium can occasionally interrupt an otherwise valid navigation by briefly
+        replacing the target with ``chrome-error://chromewebdata/``.  This is most
+        visible when several xdist workers start browsers at the same time.  Recover
+        only that confirmed transient condition; all other browser errors fail
+        immediately.
+        """
+        worker_id = os.getenv("PYTEST_XDIST_WORKER", "serial")
+        errors: list[str] = []
+
+        for attempt in range(1, _NAVIGATION_ATTEMPTS + 1):
+            logger.info(
+                "[%s] Navigation attempt %s/%s: %s",
+                worker_id,
+                attempt,
+                _NAVIGATION_ATTEMPTS,
+                url,
             )
-            raise RoboNavigationError(
-                f"Navigation failed for {url}: {message}",
-                code=code,
-                details={"url": url, "browser_error": message},
-            ) from exc
+            try:
+                result = self._page.goto(url, **kwargs)
+                if attempt > 1:
+                    logger.info(
+                        "[%s] Navigation succeeded on attempt %s/%s: %s",
+                        worker_id,
+                        attempt,
+                        _NAVIGATION_ATTEMPTS,
+                        url,
+                    )
+                return result
+            except PlaywrightError as exc:
+                message = str(exc)
+                current_url = self._page.url
+                errors.append(message)
+
+                if not _is_transient_chrome_navigation_error(message, current_url):
+                    code = (
+                        "ROBO_NAVIGATION_ABORTED"
+                        if "ERR_ABORTED" in message
+                        else "ROBO_NAVIGATION_ERROR"
+                    )
+                    raise RoboNavigationError(
+                        f"Navigation failed for {url}: {message}",
+                        code=code,
+                        details={
+                            "url": url,
+                            "browser_error": message,
+                            "attempt": attempt,
+                            "worker": worker_id,
+                        },
+                    ) from exc
+
+                logger.warning(
+                    "[%s] Transient Chromium error-page navigation detected "
+                    "on attempt %s/%s for %s.",
+                    worker_id,
+                    attempt,
+                    _NAVIGATION_ATTEMPTS,
+                    url,
+                )
+
+                if attempt >= _NAVIGATION_ATTEMPTS:
+                    raise RoboNavigationError(
+                        f"Navigation failed for {url} after "
+                        f"{_NAVIGATION_ATTEMPTS} attempts: {message}",
+                        code="ROBO_NAVIGATION_TRANSIENT_EXHAUSTED",
+                        details={
+                            "url": url,
+                            "browser_error": message,
+                            "attempts": _NAVIGATION_ATTEMPTS,
+                            "worker": worker_id,
+                            "browser_errors": errors,
+                        },
+                    ) from exc
+
+                # Chromium sometimes recovers from its internal error page on its own.
+                # Wait on that observable state instead of sleeping.  If it recovers,
+                # the requested navigation is already progressing and must not be
+                # interrupted by another goto().
+                if current_url.startswith(_CHROME_ERROR_PREFIX):
+                    try:
+                        self._page.wait_for_url(
+                            lambda value: not str(value).startswith(
+                                _CHROME_ERROR_PREFIX
+                            ),
+                            timeout=_NAVIGATION_RECOVERY_TIMEOUT_MS,
+                        )
+                    except PlaywrightError:
+                        pass
+                    else:
+                        logger.info(
+                            "[%s] Navigation recovered from Chromium error page: %s",
+                            worker_id,
+                            self._page.url,
+                        )
+                        return None
+
+        raise AssertionError("Unreachable navigation retry state.")
 
     def reload(self, **kwargs: Any):
         """Reload the current page and translate browser-engine failures."""
