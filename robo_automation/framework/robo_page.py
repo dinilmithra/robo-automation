@@ -13,7 +13,6 @@ from robo_automation.snapshot_evidence import ensure_snapshot_service
 
 from robo_automation.framework.robo_locator import RoboLocator
 
-
 logger = logging.getLogger(__name__)
 
 _NAVIGATION_ATTEMPTS = 3

@@ -1,6 +1,6 @@
 [project]
 name = "robo-automation"
-version = "0.1.12"
+version = "0.1.13"
 description = "Reusable Playwright and pytest automation framework utilities"
 requires-python = ">=3.12,<3.13"
 dependencies = [
