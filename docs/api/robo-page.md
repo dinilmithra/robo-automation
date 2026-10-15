@@ -1,14 +1,12 @@
 # robo page
 
-`RoboPage` provides reusable page-level browser operations. Use
-`wait_for_text_visible()` when the next step depends on text becoming visible.
-Timeout values are in **seconds**; when `timeout` is omitted, the configured
-browser/default wait timeout applies.
+`RoboPage` provides reusable page-level browser operations. For Appian pages,
+wait for displayed text through the text component:
 
 ```python
-page.wait_for_text_visible("Ready")
-page.wait_for_text_visible("Processing complete", timeout=8)
-page.wait_for_text_visible("partial message", exact=False)
+page.text("Ready").wait_until_visible()
+page.text("Processing complete", timeout=8).wait_until_visible()
+page.text("partial message", exact=False).wait_until_visible()
 ```
 
 ::: robo_automation.framework.robo_page.RoboPage
@@ -24,7 +22,6 @@ page.wait_for_text_visible("partial message", exact=False)
         - screenshot
         - evaluate
         - wait_for_load_state
-        - wait_for_text_visible
         - press
         - press_key
         - same_page
