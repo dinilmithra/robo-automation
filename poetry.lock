@@ -1981,14 +1981,14 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<8)"]
 
 [[package]]
 name = "robo-email"
-version = "0.1.7"
+version = "0.1.8"
 description = "Reusable HTML email report rendering and local delivery utilities"
 optional = false
 python-versions = "<3.13,>=3.12"
 groups = ["main"]
 files = [
-    {file = "robo_email-0.1.7-py3-none-any.whl", hash = "sha256:501075f2764c3634c1d836bd04d0e37677631fd15fd46b6bcfb097f0bcded3be"},
-    {file = "robo_email-0.1.7.tar.gz", hash = "sha256:4853f795abeaf865483f38613a021a69522d3ce4da9416cf876396e33e5f6b2b"},
+    {file = "robo_email-0.1.8-py3-none-any.whl", hash = "sha256:66f9527cb0de8b5a7bd96db2822e3841983a9851df572315ef533f970718e7df"},
+    {file = "robo_email-0.1.8.tar.gz", hash = "sha256:2d37700b0fedc49447f4194d562bf3276fed4163ed7db244d38702057ca06783"},
 ]
 
 [package.dependencies]
@@ -2082,4 +2082,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "ce5c7dc72acc197d9c1ac3d147995222f551f89387521277774a02be352c7b28"
+content-hash = "953ca3fc06b7befd483cedb4d2012255816e637aeb38e44c4cb3e217e76b6291"
