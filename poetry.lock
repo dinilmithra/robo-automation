@@ -1996,14 +1996,14 @@ matplotlib = "3.11.2"
 
 [[package]]
 name = "robo-html"
-version = "0.1.10"
+version = "0.1.11"
 description = "Reusable HTML report rendering utilities for automation projects"
 optional = false
 python-versions = "<3.13,>=3.12"
 groups = ["main"]
 files = [
-    {file = "robo_html-0.1.10-py3-none-any.whl", hash = "sha256:46405ce31bdadafbc8d1d00dd3a41f28f275841a658b1b756c538d6eeb44f604"},
-    {file = "robo_html-0.1.10.tar.gz", hash = "sha256:68835b938e39840b73315d46a8be4d425eead5af82a0b1a10dd21ffde667a209"},
+    {file = "robo_html-0.1.11-py3-none-any.whl", hash = "sha256:d513ea9dd9338a9e8fd34169bff703fd67b96f2e80bb2e0e576ba43f81edcfe8"},
+    {file = "robo_html-0.1.11.tar.gz", hash = "sha256:dc6d6b06069bc9d0a545b66e81fca8c68d481435bfb9eb3734d65d99a08d1d3c"},
 ]
 
 [[package]]
@@ -2094,4 +2094,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "0bc0cb4aac59f268df66d7bd15b3ec321d68eeeab2f2f13887dc366de832179b"
+content-hash = "f266bfd9ade0d47efc26fe2dcffcac64411df7542d5f2e78b764b41b90affa89"
