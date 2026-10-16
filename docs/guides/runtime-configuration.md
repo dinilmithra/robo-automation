@@ -43,7 +43,7 @@ CACHE_PATH=artifacts/runtime/cache
 | `PYTEST_LOG_CLI_FORMAT` | unset | Optional pytest console log format. |
 | `PYTEST_LOG_CLI_DATE_FORMAT` | unset | Optional pytest console date format. |
 | `PYTEST_PARALLEL_LOG_TO_FILE` | `N` | Enable the correlated execution log file. |
-| `PYTEST_PARALLEL_LOG_PATH` | `artifacts/logs/execution` | Execution-log directory. |
+| `PYTEST_PARALLEL_LOG_PATH` | `artifacts/logs/worker` | Execution-log directory. |
 | `TESTCASE_LOG_ENABLED` | `Y` | Enable per-testcase log files. |
 | `TESTCASE_LOG_PATH` | `artifacts/logs/testcases` | Per-testcase log directory. |
 
@@ -71,7 +71,7 @@ Paths support recursive `${VAR}` references. This makes a shared layout possible
 
 ```ini
 ARTIFACTS_ROOT=../artifacts
-EVIDENCE_PATH=${ARTIFACTS_ROOT}/evidence
+DOWNLOAD_PATH=${ARTIFACTS_ROOT}/downloads
 SNAPSHOT_PATH=${ARTIFACTS_ROOT}/snapshots
 CAPTURE_ACTION_SNAPSHOTS=N
 CAPTURE_FAILURE_SNAPSHOTS=Y

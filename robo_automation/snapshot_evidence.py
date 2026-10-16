@@ -190,7 +190,7 @@ class SnapshotService:
             f"images={self.config.images_enabled} "
             f"html={self.config.html_enabled} "
             f"env_ARTIFACTS_ROOT={os.getenv('ARTIFACTS_ROOT', '<unset>')} "
-            f"env_EVIDENCE_PATH={os.getenv('EVIDENCE_PATH', '<unset>')} "
+            f"env_DOWNLOAD_PATH={os.getenv('DOWNLOAD_PATH', '<unset>')} "
             f"env_SNAPSHOT_PATH={os.getenv('SNAPSHOT_PATH', '<unset>')} "
             f"writer_root={self.writer.root}",
             flush=True,

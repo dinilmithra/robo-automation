@@ -131,7 +131,7 @@ class ArtifactConfig:
     """Artifact locations relative to the consumer pytest root by default."""
 
     root: str = "artifacts"
-    execution_logs: str = "artifacts/logs/execution"
+    execution_logs: str = "artifacts/logs/worker"
     testcase_logs: str = "artifacts/logs/testcases"
     performance_logs: str = "artifacts/logs/performance"
     browser_diagnostics: str = "artifacts/browser-actions"
