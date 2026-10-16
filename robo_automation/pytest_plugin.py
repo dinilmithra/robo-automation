@@ -27,6 +27,7 @@ from .config import (
 from .correlation import bind_test_context, reset_test_context
 from .logging import LogManager, LoggingService
 from .browser import (
+    browser_fixture_scope,
     browser_lifecycle,
     performance_monitor_lifecycle,
     playwright_lifecycle,
@@ -40,6 +41,15 @@ from .snapshot_evidence import (
 from .framework import RoboBrowserContext, RoboPage
 
 logger = logging.getLogger(__name__)
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Allow applications to choose a fresh browser process for each test."""
+    parser.addini(
+        "robo_browser_scope",
+        "Browser and automation runtime lifetime: function or session.",
+        default="session",
+    )
 
 
 class _GenericPageAliasPlugin:
@@ -266,22 +276,22 @@ def snapshot_service(
         stop_snapshot_service()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=browser_fixture_scope)
 def robo_automation_playwright(
     performance_monitor: Optional[PerformanceMonitor],
 ) -> Iterator[Playwright]:
-    """Own the generic Playwright runtime for one pytest session."""
+    """Own the automation runtime for the configured browser lifetime."""
     yield from playwright_lifecycle(performance_monitor)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope=browser_fixture_scope)
 def browser(
     robo_automation_playwright: Playwright,
     performance_monitor: Optional[PerformanceMonitor],
     snapshot_service: Optional[SnapshotService],
     request: pytest.FixtureRequest,
 ) -> Iterator[Browser]:
-    """Own the public raw Playwright browser for one pytest session/worker.
+    """Own the browser for the configured per-test or per-worker lifetime.
 
     ``snapshot_service`` is an explicit dependency so snapshot
     instrumentation is installed before any browser/context/page can execute

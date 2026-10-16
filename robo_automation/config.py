@@ -221,6 +221,8 @@ class SnapshotConfig:
     action_enabled: bool = False
     failure_enabled: bool = False
     full_page: bool = False
+    images_enabled: bool = True
+    html_enabled: bool = True
 
     @property
     def enabled(self) -> bool:
@@ -237,6 +239,8 @@ class SnapshotConfig:
                 "CAPTURE_FAILURE_SNAPSHOTS", defaults.failure_enabled
             ),
             full_page=_env_bool("SNAPSHOT_FULL_PAGE", defaults.full_page),
+            images_enabled=_env_bool("CAPTURE_SNAPSHOT_IMAGES", defaults.images_enabled),
+            html_enabled=_env_bool("CAPTURE_SNAPSHOT_HTML", defaults.html_enabled),
         )
 
 

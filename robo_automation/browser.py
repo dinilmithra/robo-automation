@@ -25,6 +25,17 @@ def _measure(monitor: Optional[PerformanceMonitor], action: str, **metadata: Any
     return monitor.measure(action, metadata=metadata or None)
 
 
+def browser_fixture_scope(*, fixture_name: str, config: pytest.Config) -> str:
+    """Keep browser, driver, and higher-level runtime lifetimes aligned."""
+    scope = str(config.getini("robo_browser_scope")).strip().lower()
+    if scope not in {"function", "session"}:
+        raise pytest.UsageError(
+            "robo_browser_scope must be 'function' or 'session'; "
+            f"received {scope!r} for {fixture_name}."
+        )
+    return scope
+
+
 def close_resource(resource: Any, label: str) -> None:
     """Close a Playwright resource without masking an earlier test failure."""
     try:
@@ -146,7 +157,7 @@ def browser_lifecycle(
     performance_monitor: Optional[PerformanceMonitor],
     request: pytest.FixtureRequest,
 ) -> Iterator[Browser]:
-    """Create and close a configured session browser."""
+    """Create and close a browser for the configured fixture lifetime."""
     headless = AutomationConfig.get_env_bool("HEAD_LESS", True)
     browser_name = AutomationConfig.get_env_string("BROWSER", "chromium").lower()
     browser_type = getattr(playwright, browser_name, playwright.chromium)

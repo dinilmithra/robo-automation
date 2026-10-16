@@ -87,3 +87,19 @@ Framework maintainers can continue with the Architecture, Runtime Configuration,
 
 Consumer code can catch `RoboAutomationError` when it has a real recovery path. Normal pytest tests should usually let the exception propagate so reports keep the full failure evidence. See `docs/getting-started/error-handling.md`.
 
+
+### Browser lifetime
+
+The default `robo_browser_scope = session` keeps one browser and automation
+runtime per pytest worker. Applications that need a completely fresh browser
+process for each testcase can set this in `pytest.ini`:
+
+```ini
+[pytest]
+robo_browser_scope = function
+```
+
+Both browser and automation-driver fixtures then close after every testcase.
+Contexts and pages remain scoped to each test. The Appian runtime fixture follows
+the same setting. Application logout should run in the page fixture finalizer,
+before the underlying browser resources close.

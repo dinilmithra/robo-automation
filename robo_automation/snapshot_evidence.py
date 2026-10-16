@@ -51,19 +51,26 @@ class FailureCoverage:
 
 
 class SnapshotWriter:
-    """Write one correlated PNG/HTML/JSON evidence set."""
+    """Write metadata with independently optional PNG and HTML evidence."""
 
-    def __init__(self, root: Path, worker_id: str, *, full_page: bool = False) -> None:
+    def __init__(
+        self, root: Path, worker_id: str, *, full_page: bool = False,
+        images_enabled: bool = True, html_enabled: bool = True,
+    ) -> None:
         self.root = Path(root)
         self.worker_id = _token(worker_id, 32)
         self.full_page = full_page
+        self.images_enabled = images_enabled
+        self.html_enabled = html_enabled
         self.screenshot_root = self.root / "screenshots"
         self.html_root = self.root / "html"
         self.metadata_root = self.root / "metadata"
 
     def ensure_directories(self) -> None:
-        self.screenshot_root.mkdir(parents=True, exist_ok=True)
-        self.html_root.mkdir(parents=True, exist_ok=True)
+        if self.images_enabled:
+            self.screenshot_root.mkdir(parents=True, exist_ok=True)
+        if self.html_enabled:
+            self.html_root.mkdir(parents=True, exist_ok=True)
         self.metadata_root.mkdir(parents=True, exist_ok=True)
 
     def capture_metadata(self, *, stem: str, metadata: dict[str, Any]) -> bool:
@@ -99,14 +106,18 @@ class SnapshotWriter:
             screenshot_dir = self.screenshot_root / process_id
             html_dir = self.html_root / process_id
             metadata_dir = self.metadata_root / process_id
-            screenshot_dir.mkdir(parents=True, exist_ok=True)
-            html_dir.mkdir(parents=True, exist_ok=True)
+            if self.images_enabled:
+                screenshot_dir.mkdir(parents=True, exist_ok=True)
+            if self.html_enabled:
+                html_dir.mkdir(parents=True, exist_ok=True)
             metadata_dir.mkdir(parents=True, exist_ok=True)
             safe_stem = _token(stem, 180)
-            raw.screenshot(
-                path=str(screenshot_dir / f"{safe_stem}.png"), full_page=self.full_page
-            )
-            (html_dir / f"{safe_stem}.html").write_text(raw.content(), encoding="utf-8")
+            if self.images_enabled:
+                raw.screenshot(
+                    path=str(screenshot_dir / f"{safe_stem}.png"), full_page=self.full_page
+                )
+            if self.html_enabled:
+                (html_dir / f"{safe_stem}.html").write_text(raw.content(), encoding="utf-8")
             payload = {
                 "timestamp": time.time(),
                 "worker": self.worker_id,
@@ -162,7 +173,8 @@ class SnapshotService:
     ) -> None:
         self.config = config
         self.writer = SnapshotWriter(
-            paths.action_snapshots, worker_id, full_page=config.full_page
+            paths.action_snapshots, worker_id, full_page=config.full_page,
+            images_enabled=config.images_enabled, html_enabled=config.html_enabled
         )
         self._originals: dict[tuple[type, str], Callable[..., Any]] = {}
         self._sequence = 0
@@ -175,6 +187,8 @@ class SnapshotService:
             f"pid={os.getpid()} worker={self.writer.worker_id} "
             f"action={self.config.action_enabled} "
             f"failure={self.config.failure_enabled} "
+            f"images={self.config.images_enabled} "
+            f"html={self.config.html_enabled} "
             f"env_ARTIFACTS_ROOT={os.getenv('ARTIFACTS_ROOT', '<unset>')} "
             f"env_EVIDENCE_PATH={os.getenv('EVIDENCE_PATH', '<unset>')} "
             f"env_SNAPSHOT_PATH={os.getenv('SNAPSHOT_PATH', '<unset>')} "
