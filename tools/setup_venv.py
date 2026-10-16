@@ -63,11 +63,14 @@ def main() -> int:
 
     python = _venv_python()
 
-    _run([str(python), "-m", "pip", "install", "--upgrade", "pip"])
-    _run([str(python), "-m", "pip", "install", f"poetry=={POETRY_VERSION}"])
-
     env = os.environ.copy()
+    env["VIRTUAL_ENV"] = str(VENV_DIR)
+    env["PATH"] = str(python.parent) + os.pathsep + env.get("PATH", "")
     env["POETRY_VIRTUALENVS_CREATE"] = "false"
+    env["POETRY_VIRTUALENVS_IN_PROJECT"] = "true"
+
+    _run([str(python), "-m", "pip", "install", "--upgrade", "pip"], env=env)
+    _run([str(python), "-m", "pip", "install", f"poetry=={POETRY_VERSION}"], env=env)
 
     # Clear cached PyPI metadata before resolving dependencies so newly published
     # package versions are visible to Poetry.
@@ -79,7 +82,8 @@ def main() -> int:
     # This makes the bootstrap script resilient to dependency/version updates.
     _run([str(python), "-m", "poetry", "lock"], env=env)
     _run([str(python), "-m", "poetry", "install"], env=env)
-    _run([str(python), "-m", "poetry", "--version"])
+    _run([str(python), "-m", "poetry", "--version"], env=env)
+    _run([str(python), "-m", "pip", "check"], env=env)
 
     print("\nrobo-automation virtual environment is ready.")
     print(f"Python: {python}")
